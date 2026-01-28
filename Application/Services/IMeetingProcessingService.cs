@@ -31,72 +31,91 @@ namespace MeetingNotesMaker.Application.Services
         }
 
         public async Task<ProcessMeetingResponseDto> ProcessMeetingAsync(
-            ProcessMeetingRequestDto request, 
+            ProcessMeetingRequestDto request,
             IProgress<TranscriptionProgressDto>? progress = null)
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            
+
+            // Create Output directory
+            var outputDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Output");
+            Directory.CreateDirectory(outputDirectory);
+
             try
             {
                 // Validate inputs
                 ValidateInputs(request);
 
                 // Step 1: Transcribe audio
-                progress?.Report(new TranscriptionProgressDto 
-                { 
-                    Percentage = 10, 
-                    StatusMessage = "Starting audio transcription..." 
+                progress?.Report(new TranscriptionProgressDto
+                {
+                    Percentage = 10,
+                    StatusMessage = "Starting audio transcription..."
                 });
 
                 var transcriptionResult = await _transcriptionService.TranscribeAudioAsync(
-                    request.AudioFilePath, 
+                    request.AudioFilePath,
                     request.WhisperModelPath,
-                    new Progress<int>(value => progress?.Report(new TranscriptionProgressDto 
-                    { 
+                    new Progress<int>(value => progress?.Report(new TranscriptionProgressDto
+                    {
                         Percentage = 10 + (int)(value * 0.4), // 10% to 50%
                         StatusMessage = $"Transcribing audio... ({value}%)"
                     })));
 
-                progress?.Report(new TranscriptionProgressDto 
-                { 
-                    Percentage = 50, 
-                    StatusMessage = "Transcription complete, generating meeting notes..." 
+                progress?.Report(new TranscriptionProgressDto
+                {
+                    Percentage = 50,
+                    StatusMessage = "Transcription complete, saving transcript to Output folder..."
                 });
 
-                // Step 2: Load system prompt
+                // Step 2: Save transcript to Output folder
+                var transcriptFileName = $"{Path.GetFileNameWithoutExtension(request.AudioFilePath)}_{DateTime.UtcNow:yyyyMMdd_HHmmss}_transcript.txt";
+                var transcriptFilePath = Path.Combine(outputDirectory, transcriptFileName);
+
+                // Ensure the output directory exists before writing
+                Directory.CreateDirectory(Path.GetDirectoryName(transcriptFilePath)!);
+
+                await File.WriteAllTextAsync(transcriptFilePath, transcriptionResult.FullText);
+
+                progress?.Report(new TranscriptionProgressDto
+                {
+                    Percentage = 60,
+                    StatusMessage = $"Transcript saved to Output folder: {Path.GetFileName(transcriptFilePath)}"
+                });
+
+                // Step 3: Load system prompt
                 var systemPrompt = await LoadSystemPromptAsync(request.SystemPromptPath);
 
-                // Step 3: Generate meeting notes
+                // Step 4: Load the saved transcript from the Output folder to use for meeting notes generation
+                var transcriptContent = await File.ReadAllTextAsync(transcriptFilePath);
+
+                progress?.Report(new TranscriptionProgressDto
+                {
+                    Percentage = 70,
+                    StatusMessage = "Generating meeting notes from transcript..."
+                });
+
+                // Step 5: Generate meeting notes using the transcript from the Output folder
                 var meetingNote = await _noteGenerationService.GenerateMeetingNotesAsync(
-                    transcriptionResult.FullText,
+                    transcriptContent,
                     systemPrompt,
                     request.OllamaModelName);
 
-                // Step 4: Save transcript to file
-                var transcriptDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MeetingTranscriptions");
-                Directory.CreateDirectory(transcriptDirectory);
-                var transcriptFileName = $"{Path.GetFileNameWithoutExtension(request.AudioFilePath)}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.txt";
-                var transcriptFilePath = Path.Combine(transcriptDirectory, transcriptFileName);
-                await File.WriteAllTextAsync(transcriptFilePath, transcriptionResult.FullText);
-
-                progress?.Report(new TranscriptionProgressDto 
-                { 
-                    Percentage = 80, 
-                    StatusMessage = "Generating PDF output..." 
+                progress?.Report(new TranscriptionProgressDto
+                {
+                    Percentage = 80,
+                    StatusMessage = "Generating PDF output..."
                 });
 
-                // Step 5: Generate PDF output
-                var notesDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MeetingNotes");
-                Directory.CreateDirectory(notesDirectory);
-                var pdfFileName = $"Meeting_Notes_{Path.GetFileNameWithoutExtension(request.AudioFilePath)}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.pdf";
-                var pdfFilePath = Path.Combine(notesDirectory, pdfFileName);
+                // Step 6: Generate PDF output in Output folder
+                var pdfFileName = $"{Path.GetFileNameWithoutExtension(request.AudioFilePath)}_{DateTime.UtcNow:yyyyMMdd_HHmmss}_notes.pdf";
+                var pdfFilePath = Path.Combine(outputDirectory, pdfFileName);
 
                 await _pdfGenerationService.SaveMeetingNotesPdfAsync(meetingNote, pdfFilePath);
 
                 progress?.Report(new TranscriptionProgressDto
                 {
                     Percentage = 100,
-                    StatusMessage = "Processing complete!"
+                    StatusMessage = "Processing complete! Files saved to Output folder."
                 });
 
                 stopwatch.Stop();
@@ -113,7 +132,7 @@ namespace MeetingNotesMaker.Application.Services
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                
+
                 return new ProcessMeetingResponseDto
                 {
                     Success = false,

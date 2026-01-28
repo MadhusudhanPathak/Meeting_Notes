@@ -1,4 +1,6 @@
-# Meeting Notes Maker
+# ⚠️ PROJECT SUSPENDED - INCOMPLETE ⚠️
+
+## This project is currently incomplete and suspended due to technical issues.
 
 A professional-grade Windows desktop application that processes meeting audio files locally and generates formatted meeting notes. The application works entirely offline (except for initial setup) and handles all processing on the user's machine with a clean, maintainable architecture.
 
@@ -120,3 +122,60 @@ Feel free to submit issues and enhancement requests. Pull requests are welcome!
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Project Status: Suspended Due to Technical Issues
+
+### Current Issues
+
+The project is currently suspended due to the following technical challenges:
+
+1. **Whisper Executable Integration Problems**:
+   - The Whisper transcription service encounters errors during audio processing
+   - Exit code -2147024894 indicates issues with the underlying Whisper executable
+   - Despite successful transcription output being generated, the process fails during SRT file handling
+   - Media Foundation decoding errors occur when processing certain audio formats
+
+2. **External Dependency Failures**:
+   - The Whisper executable (main.exe) has compatibility issues with certain audio codecs
+   - Temporary file handling in the transcription process causes failures
+   - GPU acceleration conflicts with certain graphics drivers
+
+3. **Incomplete Output Pipeline**:
+   - While the transcript is generated successfully, the process fails before saving files to the Output folder
+   - The meeting notes generation stage is not reached due to transcription failures
+
+### Planned Improvements (When Resumed)
+
+1. **Alternative Transcription Engine**:
+   - Integrate Whisper.net library instead of relying on external executable
+   - Implement fallback transcription methods for better reliability
+   - Add support for additional audio format conversions
+
+2. **Enhanced Error Handling**:
+   - Implement graceful degradation when transcription fails
+   - Add detailed logging for debugging transcription issues
+   - Create recovery mechanisms for partial failures
+
+3. **Improved File Management**:
+   - Ensure Output folder is created regardless of transcription success
+   - Implement atomic file operations to prevent corruption
+   - Add file validation and cleanup routines
+
+4. **Better Audio Format Support**:
+   - Integrate audio preprocessing to normalize input formats
+   - Add automatic format conversion before transcription
+   - Implement codec detection and handling
+
+5. **Robust Process Management**:
+   - Replace external executable calls with native .NET implementations
+   - Add timeout and retry mechanisms for transcription
+   - Implement health checks for external dependencies
+
+### Known Working State
+
+Despite the suspension, the following components are properly implemented:
+- UI has been updated to remove unnecessary save buttons
+- Output folder creation and management is implemented
+- Transcript saving and loading from the Output folder is coded
+- Meeting notes generation pipeline is structured correctly
+- The application builds successfully without compilation errors

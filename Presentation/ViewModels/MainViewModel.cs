@@ -6,6 +6,7 @@ using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using MeetingNotesMaker.Infrastructure.Services;
 using MeetingNotesMaker.Domain.Services;
+using System.IO;
 
 namespace MeetingNotesMaker.Presentation.ViewModels
 {
@@ -41,8 +42,6 @@ namespace MeetingNotesMaker.Presentation.ViewModels
             // Initialize commands
             SelectAudioFileCommand = new AsyncRelayCommand(SelectAudioFileAsync);
             ProcessMeetingCommand = new AsyncRelayCommand(ProcessMeetingAsync, CanExecuteProcessMeeting);
-            SavePdfCommand = new AsyncRelayCommand(SavePdfAsync, CanExecuteSavePdf);
-            SaveTranscriptCommand = new AsyncRelayCommand(SaveTranscriptAsync, CanExecuteSaveTranscript);
             SelectWhisperModelCommand = new AsyncRelayCommand(SelectWhisperModelAsync);
             SelectSystemPromptCommand = new AsyncRelayCommand(SelectSystemPromptAsync);
 
@@ -54,8 +53,6 @@ namespace MeetingNotesMaker.Presentation.ViewModels
 
         public ICommand SelectAudioFileCommand { get; }
         public ICommand ProcessMeetingCommand { get; }
-        public ICommand SavePdfCommand { get; }
-        public ICommand SaveTranscriptCommand { get; }
         public ICommand SelectWhisperModelCommand { get; }
         public ICommand SelectSystemPromptCommand { get; }
 
@@ -122,8 +119,6 @@ namespace MeetingNotesMaker.Presentation.ViewModels
                 {
                     // Notify commands that their can-execute status may have changed
                     ((AsyncRelayCommand)ProcessMeetingCommand).NotifyCanExecuteChanged();
-                    ((AsyncRelayCommand)SavePdfCommand).NotifyCanExecuteChanged();
-                    ((AsyncRelayCommand)SaveTranscriptCommand).NotifyCanExecuteChanged();
                 }
             }
         }
@@ -242,8 +237,8 @@ namespace MeetingNotesMaker.Presentation.ViewModels
                     ProgressText = "Processing complete!";
                     ProgressValue = 100;
 
-                    // Update transcript preview with a sample
-                    TranscriptPreview = "Processing complete. The full transcript and notes have been generated.";
+                    // Update transcript preview with information about the output
+                    TranscriptPreview = $"Processing complete. Transcript and notes saved to Output folder:\nTranscript: {Path.GetFileName(response.TranscriptFilePath)}\nNotes: {Path.GetFileName(response.PdfFilePath)}";
                 }
                 else
                 {
@@ -262,66 +257,10 @@ namespace MeetingNotesMaker.Presentation.ViewModels
 
         private bool CanExecuteProcessMeeting()
         {
-            return !string.IsNullOrEmpty(SelectedAudioFile) && 
-                   !string.IsNullOrEmpty(SelectedWhisperModelPath) && 
-                   !string.IsNullOrEmpty(SelectedSystemPromptPath) && 
+            return !string.IsNullOrEmpty(SelectedAudioFile) &&
+                   !string.IsNullOrEmpty(SelectedWhisperModelPath) &&
+                   !string.IsNullOrEmpty(SelectedSystemPromptPath) &&
                    !IsProcessing;
-        }
-
-        private async Task SavePdfAsync()
-        {
-            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Filter = "PDF Files|*.pdf",
-                FileName = $"Meeting_Notes_{DateTime.Now:yyyyMMdd_HHmmss}.pdf"
-            };
-
-            if (saveFileDialog.ShowDialog() == true)
-            {
-                try
-                {
-                    // In a real implementation, this would save the actual generated PDF
-                    // For now, we'll simulate the operation
-                    StatusMessage = $"PDF saved successfully to {saveFileDialog.FileName}";
-                }
-                catch (Exception ex)
-                {
-                    StatusMessage = $"Error saving PDF: {ex.Message}";
-                }
-            }
-        }
-
-        private bool CanExecuteSavePdf()
-        {
-            return !string.IsNullOrEmpty(TranscriptPreview) && !IsProcessing;
-        }
-
-        private async Task SaveTranscriptAsync()
-        {
-            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Filter = "Text Files|*.txt",
-                FileName = $"Transcript_{DateTime.Now:yyyyMMdd_HHmmss}.txt"
-            };
-
-            if (saveFileDialog.ShowDialog() == true)
-            {
-                try
-                {
-                    // In a real implementation, this would save the actual transcript
-                    // For now, we'll simulate the operation
-                    StatusMessage = $"Transcript saved successfully to {saveFileDialog.FileName}";
-                }
-                catch (Exception ex)
-                {
-                    StatusMessage = $"Error saving transcript: {ex.Message}";
-                }
-            }
-        }
-
-        private bool CanExecuteSaveTranscript()
-        {
-            return !string.IsNullOrEmpty(TranscriptPreview) && !IsProcessing;
         }
 
         private async Task SelectWhisperModelAsync()

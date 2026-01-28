@@ -116,16 +116,8 @@
         <!-- Output Section -->
         <GroupBox Grid.Row="3" Header="Output" Margin="0,0,0,15">
             <StackPanel Margin="10" Orientation="Horizontal" HorizontalAlignment="Center">
-                <Button Content="Save PDF Notes"
-                        Command="{Binding SavePdfCommand}"
-                        IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
-                        Padding="20,10" Margin="0,0,10,0"
-                        Background="#2196F3" Foreground="White"/>
-                <Button Content="Save Transcript"
-                        Command="{Binding SaveTranscriptCommand}"
-                        IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
-                        Padding="20,10"
-                        Background="#FF9800" Foreground="White"/>
+                <TextBlock Text="Transcripts and notes will be saved to the Output folder"
+                           FontStyle="Italic" VerticalAlignment="Center"/>
             </StackPanel>
         </GroupBox>
 

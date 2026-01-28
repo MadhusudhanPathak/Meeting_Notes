@@ -1,90 +1,89 @@
-# Meeting Notes App - Technical To-Do
+# 🚨 MEETING NOTES MAKER - PROJECT SUSPENDED 🚨
 
-## 1. Project Setup
-- Create WPF .NET 6/7 project targeting Windows
-- Install NuGet packages: `OllamaSharp`, `PdfSharp` or `iTextSharp`, `Newtonsoft.Json`
-- Add native Whisper.cpp C# wrapper from https://github.com/Const-me/Whisper
+## ⚠️ CURRENT STATUS: INCOMPLETE AND SUSPENDED ⚠️
 
-## 2. Core Components to Build
+This project is currently suspended due to technical issues with the Whisper transcription service. See "Issues to Resolve" section below for details.
 
-### A. Whisper Integration
-- Create `WhisperService.cs` class
-- Load `.bin` model file from working directory
-- Implement `TranscribeAudio(string filePath, IProgress<int> progress)` method
-- Return full transcript as string
-- Handle file format validation (MP3/WAV)
+## COMPLETED TASKS
+✅ Project setup with WPF and required NuGet packages
+✅ Whisper integration with WhisperService.cs
+✅ Ollama integration with OllamaService.cs
+✅ File management with FileService.cs
+✅ UI structure with MainWindow.xaml
+✅ Main window logic with dependency checking
+✅ Error handling implementation
+✅ Clean architecture with presentation, application, domain, and infrastructure layers
+✅ UI updated to remove unnecessary "Save PDF" and "Save Transcript" buttons
+✅ Output folder creation and management implemented
+✅ Transcript saving and loading from Output folder coded
+✅ Meeting notes generation pipeline structured correctly
+✅ Application builds successfully without compilation errors
 
-### B. Ollama Integration  
-- Create `OllamaService.cs` class
-- Implement `GetInstalledModels()` to list local Ollama models via API
-- Implement `GenerateNotes(string transcript, string systemPrompt, string modelName)` method
-- Use Ollama API endpoint (default: http://localhost:11434)
+## ISSUES TO RESOLVE (BLOCKING PROGRESS)
 
-### C. File Management
-- Create `FileService.cs` class
-- `LoadSystemPrompts()` - scan directory for `*_Prompt.txt` files
-- `FindWhisperModel()` - locate `.bin` file in working directory
-- `SavePDF(string content, string path)` - generate formatted PDF
-- `SaveTranscript(string content, string path)` - save raw TXT
+### 1. Whisper Executable Integration Problems
+- **Issue**: The Whisper transcription service encounters errors during audio processing
+- **Error**: Exit code -2147024894 indicates issues with the underlying Whisper executable
+- **Symptom**: Despite successful transcription output being generated, the process fails during SRT file handling
+- **Additional Issue**: Media Foundation decoding errors occur when processing certain audio formats
 
-### D. Startup Validation
-- Create `DependencyChecker.cs` class
-- Check for System_Prompt.txt existence
-- Check for .bin Whisper model
-- Verify Ollama is running (HTTP ping to localhost:11434)
-- Return validation results with specific error messages
+### 2. External Dependency Failures
+- **Issue**: The Whisper executable (main.exe) has compatibility issues with certain audio codecs
+- **Issue**: Temporary file handling in the transcription process causes failures
+- **Issue**: GPU acceleration conflicts with certain graphics drivers
 
-## 3. UI Structure (MainWindow.xaml)
+### 3. Incomplete Output Pipeline
+- **Issue**: While the transcript is generated successfully, the process fails before saving files to the Output folder
+- **Issue**: The meeting notes generation stage is not reached due to transcription failures
 
-### Layout Sections:
-1. **Status Bar** (top) - dependency status indicators
-2. **Input Section**: 
-   - File picker button
-   - Ollama model dropdown (bind to available models)
-   - System prompt dropdown (bind to found prompt files)
-3. **Processing Section**:
-   - "Process Meeting" button
-   - Progress bar with status label
-4. **Output Section**:
-   - Save location textbox with browse button
-   - Save buttons for PDF/TXT
+## NEXT STEPS FOR RESUMPTION
 
-## 4. MainWindow.xaml.cs Logic
+### Priority 1: Alternative Transcription Engine
+- [ ] Replace external Whisper executable with Whisper.net library implementation
+- [ ] Remove dependency on external main.exe file
+- [ ] Implement native .NET transcription using Whisper.net
+- [ ] Test with various audio formats (MP3, WAV, FLAC, M4A)
 
-### Key Methods:
-```
-- OnLoaded(): Run DependencyChecker, populate dropdowns
-- SelectAudioFile_Click(): Open file dialog
-- ProcessMeeting_Click(): 
-  * Call WhisperService.TranscribeAudio()
-  * Update progress bar
-  * Call OllamaService.GenerateNotes()
-  * Enable save buttons
-- SavePDF_Click(): Use FileService.SavePDF()
-- SaveTranscript_Click(): Use FileService.SaveTranscript()
-```
+### Priority 2: Enhanced Error Handling
+- [ ] Implement graceful degradation when transcription fails
+- [ ] Add detailed logging for debugging transcription issues
+- [ ] Create recovery mechanisms for partial failures
+- [ ] Ensure Output folder is created regardless of transcription success
 
-### State Management:
-- Store transcript and notes in class-level variables
-- Disable/enable buttons based on processing state
-- Use async/await for all long operations
+### Priority 3: Improved File Management
+- [ ] Implement atomic file operations to prevent corruption
+- [ ] Add file validation and cleanup routines
+- [ ] Ensure transcript is saved to Output folder even if notes generation fails
 
-## 5. Error Handling Requirements
+### Priority 4: Better Audio Format Support
+- [ ] Integrate audio preprocessing to normalize input formats
+- [ ] Add automatic format conversion before transcription
+- [ ] Implement codec detection and handling
 
-- Wrap all file I/O in try-catch
-- Display MessageBox for critical errors
-- Show inline warnings for missing dependencies
-- Provide setup instructions in error messages:
-  * Link to Whisper model download
-  * "Install Ollama from ollama.ai"
-  * Show System_Prompt.txt template
+### Priority 5: Robust Process Management
+- [ ] Add timeout and retry mechanisms for transcription
+- [ ] Implement health checks for external dependencies
+- [ ] Create fallback mechanisms for transcription failures
 
-## 6. Default Filenames
-- PDF: `Meeting_Notes_{DateTime.Now:yyyyMMdd_HHmmss}.pdf`
-- TXT: `Transcript_{DateTime.Now:yyyyMMdd_HHmmss}.txt`
+## WORKFLOW REQUIREMENTS (IMPLEMENTED BUT NOT FUNCTIONING DUE TO ISSUES)
+1. User selects an audio file using the "Select Audio File" button
+2. User selects a Whisper model file for transcription
+3. User selects a system prompt file for note generation
+4. User selects an Ollama model from the dropdown
+5. User clicks "Process Meeting" to start transcription and note generation
+6. Application creates "Output" folder in application directory
+7. Application transcribes audio using Whisper
+8. Application saves transcript to "Output" folder as TXT file
+9. Application loads transcript from the saved file in "Output" folder
+10. Application sends loaded transcript to Ollama with system prompt
+11. Application structures the AI response into meeting notes
+12. Application generates PDF meeting notes and saves to "Output" folder
+13. Both transcript and notes are available in the "Output" folder
 
-## 7. README.md Must Include
-- Prerequisites: Ollama installation, Whisper model download link
-- Setup: Place `.bin` file and `System_Prompt.txt` in app directory
-- Example System_Prompt.txt template
-- Troubleshooting common issues
+## TECHNICAL NOTES FOR RESUMPTION
+- The current implementation is in `Application\Services\IMeetingProcessingService.cs`
+- The Output folder creation happens at the beginning of ProcessMeetingAsync method
+- Transcript is saved to Output folder after transcription
+- Transcript is loaded from Output folder before generating meeting notes
+- Meeting notes are saved as PDF to the same Output folder
+- UI changes have removed the manual save buttons as requested
