@@ -85,6 +85,13 @@ class MainWindow(QMainWindow):
         self.system_prompt_combo = QComboBox()
         prompt_layout.addWidget(self.system_prompt_combo)
         controls_layout.addLayout(prompt_layout)
+
+        # Model selection (for .bin files)
+        model_bin_layout = QHBoxLayout()
+        model_bin_layout.addWidget(QLabel(".bin Model:"))
+        self.model_bin_combo = QComboBox()
+        model_bin_layout.addWidget(self.model_bin_combo)
+        controls_layout.addLayout(model_bin_layout)
         
         # Process button
         self.make_notes_button = QPushButton("Generate Meeting Notes")
@@ -149,8 +156,17 @@ class MainWindow(QMainWindow):
             self.system_prompt_combo.clear()
             for prompt_path in self.config_manager.app_config.system_prompt_paths:
                 self.system_prompt_combo.addItem(
-                    os.path.basename(prompt_path), 
+                    os.path.basename(prompt_path),
                     prompt_path
+                )
+
+            # Populate .bin model combo
+            self.model_bin_combo.clear()
+            model_files = self.config_manager.get_all_model_files(self.config_manager.app_config.input_dir)
+            for model_file in model_files:
+                self.model_bin_combo.addItem(
+                    os.path.basename(model_file),
+                    model_file
                 )
     
     def select_audio_file(self) -> None:
@@ -215,13 +231,15 @@ class MainWindow(QMainWindow):
         # Get selected values
         system_prompt_path = self.system_prompt_combo.currentData()
         ollama_model = self.ollama_model_combo.currentText()
+        selected_model_path = self.model_bin_combo.currentData()
         
         # Create and start worker
         self.worker = ProcessingWorker(
             self.config_manager,
             self.selected_audio_file,
             system_prompt_path,
-            ollama_model
+            ollama_model,
+            selected_model_path
         )
         self.worker.progress.connect(self.update_progress)
         self.worker.log.connect(self.update_log)
@@ -256,72 +274,272 @@ class MainWindow(QMainWindow):
             )
     
     def save_files(self, notes: str, transcript: str) -> None:
-        """Save the generated notes and transcript to files."""
+        """Save the generated notes and transcript to three different files in the output folder."""
         base_name = Path(self.selected_audio_file).stem
         timestamped_base_name = get_timestamped_filename(base_name, "")
         # Remove the trailing dot from timestamped filename
         timestamped_base_name = timestamped_base_name[:-1] if timestamped_base_name.endswith('.') else timestamped_base_name
-        
+
+        # Define output file paths in the output directory
+        output_dir = Path("output")
+        txt_file_path = output_dir / f"{timestamped_base_name}_transcript.txt"
+        md_file_path = output_dir / f"{timestamped_base_name}_notes.md"
+        pdf_file_path = output_dir / f"{timestamped_base_name}_notes.pdf"
+
         # Save transcript
-        txt_file_name, _ = QFileDialog.getSaveFileName(
-            self, 
-            "Save Transcript", 
-            f"{timestamped_base_name}_transcript.txt", 
-            "Text Files (*.txt)"
-        )
-        
-        if txt_file_name:
-            try:
-                with open(txt_file_name, "w", encoding="utf-8") as f:
-                    f.write(transcript)
-                self.log_text_edit.append(f"Transcript saved to {txt_file_name}")
-            except Exception as e:
-                QMessageBox.critical(
-                    self,
-                    "Save Error",
-                    f"Failed to save transcript: {e}"
-                )
-        
+        try:
+            with open(txt_file_path, "w", encoding="utf-8") as f:
+                f.write(transcript)
+            self.log_text_edit.append(f"Transcript saved to {txt_file_path}")
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Save Error",
+                f"Failed to save transcript: {e}"
+            )
+            return
+
+        # Save notes as markdown
+        try:
+            with open(md_file_path, "w", encoding="utf-8") as f:
+                f.write(notes)
+            self.log_text_edit.append(f"Markdown notes saved to {md_file_path}")
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Save Error",
+                f"Failed to save markdown notes: {e}"
+            )
+            return
+
         # Save notes as PDF
-        pdf_file_name, _ = QFileDialog.getSaveFileName(
-            self, 
-            "Save Notes", 
-            f"{timestamped_base_name}_notes.pdf", 
-            "PDF Files (*.pdf)"
-        )
-        
-        if pdf_file_name:
-            try:
-                from reportlab.platypus import SimpleDocTemplate, Paragraph
-                from reportlab.lib.styles import getSampleStyleSheet
-                
-                doc = SimpleDocTemplate(pdf_file_name)
-                styles = getSampleStyleSheet()
-                
-                # Split notes into paragraphs for PDF
-                story = []
-                for line in notes.split('\n'):
-                    if line.strip():  # Skip empty lines
-                        story.append(Paragraph(line.replace('\n', '<br/>'), styles['Normal']))
-                
-                doc.build(story)
-                self.log_text_edit.append(f"Notes saved to {pdf_file_name}")
-            except ImportError:
-                QMessageBox.warning(
-                    self,
-                    "PDF Library Missing",
-                    "reportlab library not found. Cannot save PDF. Install with 'pip install reportlab'"
-                )
-            except Exception as e:
-                QMessageBox.critical(
-                    self,
-                    "Save Error",
-                    f"Failed to save PDF: {e}"
-                )
-        
+        try:
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle, Image
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.pagesizes import letter
+            from reportlab.lib.units import inch
+            from reportlab.lib import colors
+            import re
+
+            doc = SimpleDocTemplate(str(pdf_file_path), pagesize=letter,
+                                    rightMargin=72, leftMargin=72,
+                                    topMargin=72, bottomMargin=18)
+            styles = getSampleStyleSheet()
+
+            # Create custom styles for better formatting
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Title'],
+                fontSize=24,
+                spaceAfter=30,
+                alignment=1,  # Center alignment
+                textColor=colors.darkblue,
+                borderWidth=0,
+                borderPadding=0,
+                spaceBefore=30
+            )
+
+            heading1_style = ParagraphStyle(
+                'CustomHeading1',
+                parent=styles['Heading1'],
+                fontSize=18,
+                spaceAfter=14,
+                spaceBefore=24,
+                textColor=colors.darkgreen,
+                borderWidth=0,
+                borderPadding=0,
+                leftIndent=0
+            )
+
+            heading2_style = ParagraphStyle(
+                'CustomHeading2',
+                parent=styles['Heading2'],
+                fontSize=15,
+                spaceAfter=12,
+                spaceBefore=18,
+                textColor=colors.darkred,
+                borderWidth=0,
+                borderPadding=0,
+                leftIndent=0
+            )
+
+            heading3_style = ParagraphStyle(
+                'CustomHeading3',
+                parent=styles['Heading3'],
+                fontSize=13,
+                spaceAfter=10,
+                spaceBefore=14,
+                textColor=colors.darkblue,
+                borderWidth=0,
+                borderPadding=0,
+                leftIndent=0
+            )
+
+            # Style for bullet points
+            bullet_style = ParagraphStyle(
+                'BulletPoints',
+                parent=styles['Normal'],
+                leftIndent=30,
+                spaceAfter=6,
+                bulletIndent=15,
+                bulletFontName='Helvetica-Bold',
+                bulletFontSize=10
+            )
+
+            # Split notes into paragraphs for PDF with better markdown parsing
+            story = []
+
+            # Add title
+            story.append(Paragraph("Meeting Notes", title_style))
+            story.append(Spacer(1, 0.25 * inch))
+
+            # Process the notes content with better markdown parsing
+            lines = notes.split('\n')
+            i = 0
+
+            while i < len(lines):
+                line = lines[i].strip()
+
+                if not line:
+                    story.append(Spacer(1, 0.15 * inch))
+                    i += 1
+                    continue
+
+                # Check if line looks like a markdown header
+                if line.startswith('#'):
+                    # Handle markdown headers
+                    level = len(line) - len(line.lstrip('#'))
+                    header_text = line.lstrip('# ').strip()
+
+                    if level == 1:
+                        story.append(Paragraph(header_text, heading1_style))
+                    elif level == 2:
+                        story.append(Paragraph(header_text, heading2_style))
+                    elif level >= 3:
+                        story.append(Paragraph(header_text, heading3_style))
+
+                # Check for thematic breaks (horizontal rules)
+                elif line.startswith('---') or line.startswith('***') or line.startswith('___'):
+                    story.append(Spacer(1, 0.2 * inch))
+                    # Add a horizontal line
+                    d = SimpleDocTemplate
+                    from reportlab.graphics.shapes import Line, Drawing
+                    line_shape = Line(0, 0, 6.5*inch, 0)
+                    line_shape.strokeColor = colors.grey
+                    line_shape.strokeWidth = 1
+                    drawing = Drawing(6.5*inch, 1)
+                    drawing.add(line_shape)
+                    story.append(drawing)
+                    story.append(Spacer(1, 0.2 * inch))
+
+                # Check for bullet points or lists
+                elif line.startswith(('- ', '* ', '+ ')) or re.match(r'^\d+\.', line):
+                    # Handle lists - collect all list items
+                    list_items = []
+                    while i < len(lines) and (lines[i].strip().startswith(('- ', '* ', '+ ')) or
+                                              re.match(r'^\d+\.', lines[i].strip()) or
+                                              (len(list_items) > 0 and
+                                               lines[i].strip().startswith('  ') and
+                                               not lines[i].strip().startswith('#'))):  # Continuation of list item
+                        list_line = lines[i].strip()
+                        if list_line:
+                            # Format the list item properly
+                            if list_line.startswith(('- ', '* ', '+ ')):
+                                # Replace with proper bullet character
+                                list_item = "&bull; " + list_line[2:]
+                            elif re.match(r'^\d+\.', list_line):
+                                # Numbered list
+                                list_item = list_line
+                            else:
+                                # Indented continuation of list item
+                                list_item = "&nbsp;&nbsp;&nbsp;" + list_line.strip()
+
+                            list_items.append(Paragraph(list_item, bullet_style))
+                        i += 1
+
+                    # Add all list items to the story
+                    for item in list_items:
+                        story.append(item)
+                    story.append(Spacer(1, 0.1 * inch))
+                    continue  # Skip incrementing i since we already did it in the loop
+
+                # Check for bold, italic, strikethrough, and code formatting
+                elif ('**' in line or '*' in line or '~~' in line or '`' in line):
+                    # Process markdown formatting
+                    formatted_line = line
+                    # Replace **text** with bold
+                    formatted_line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', formatted_line)
+                    # Replace *text* or _text_ with italic
+                    formatted_line = re.sub(r'\*(.*?)\*|_(.*?)_', r'<i>\1\2</i>', formatted_line)
+                    # Replace ~~text~~ with strikethrough
+                    formatted_line = re.sub(r'~~(.*?)~~', r'<strike>\1</strike>', formatted_line)
+                    # Replace `code` with monospace
+                    formatted_line = re.sub(r'`(.*?)`', r'<font face="Courier">\\1</font>', formatted_line)
+                    # Replace ```code block``` with monospace and background
+                    formatted_line = re.sub(r'```(.*?)```', r'<font face="Courier">\\1</font>', formatted_line)
+
+                    story.append(Paragraph(formatted_line, styles['Normal']))
+
+                # Check for links
+                elif '](' in line:
+                    # Process markdown links [text](url)
+                    formatted_line = re.sub(r'\[(.*?)\]\((.*?)\)', r'<link href="\2">\1</link>', line)
+                    story.append(Paragraph(formatted_line, styles['Normal']))
+
+                # Check for inline images
+                elif '![' in line and ']' in line and '(' in line and ')' in line:
+                    # Extract image markdown: ![alt text](image_url)
+                    img_match = re.search(r'!\[(.*?)\]\((.*?)\)', line)
+                    if img_match:
+                        alt_text, img_url = img_match.groups()
+                        # If it's a local icon file, try to embed it
+                        try:
+                            if img_url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+                                img = Image(img_url)
+                                img.drawHeight = 0.5 * inch
+                                img.drawWidth = 0.5 * inch
+                                story.append(img)
+                                # Add alt text as caption
+                                if alt_text:
+                                    story.append(Paragraph(alt_text, styles['Italic']))
+                        except:
+                            # If image can't be loaded, just add alt text
+                            if alt_text:
+                                story.append(Paragraph(alt_text, styles['Italic']))
+                    else:
+                        story.append(Paragraph(line, styles['Normal']))
+
+                # Regular paragraph
+                else:
+                    story.append(Paragraph(line, styles['Normal']))
+
+                story.append(Spacer(1, 0.1 * inch))
+                i += 1
+
+            doc.build(story)
+            self.log_text_edit.append(f"PDF notes saved to {pdf_file_path}")
+        except ImportError:
+            QMessageBox.warning(
+                self,
+                "PDF Library Missing",
+                "reportlab library not found. Cannot save PDF. Install with 'pip install reportlab'"
+            )
+            return
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Save Error",
+                f"Failed to save PDF: {e}"
+            )
+            return
+
         # Show success message
         QMessageBox.information(
             self,
             "Success",
-            "Meeting notes and transcript have been generated successfully!"
+            f"Meeting notes and transcript have been generated successfully!\n\n"
+            f"Files saved to:\n"
+            f"- {txt_file_path} (Transcript)\n"
+            f"- {md_file_path} (Markdown Notes)\n"
+            f"- {pdf_file_path} (PDF Notes)"
         )

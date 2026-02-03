@@ -20,26 +20,29 @@ class ProcessingWorker(QThread):
     finished = pyqtSignal(object)
     
     def __init__(
-        self, 
-        config_manager: ConfigManager, 
-        selected_audio_file: str, 
-        system_prompt_path: str, 
-        ollama_model: str
+        self,
+        config_manager: ConfigManager,
+        selected_audio_file: str,
+        system_prompt_path: str,
+        ollama_model: str,
+        selected_model_path: str
     ):
         """
         Initialize the processing worker.
-        
+
         Args:
             config_manager: Configuration manager instance
             selected_audio_file: Path to the audio file to process
             system_prompt_path: Path to the system prompt file
             ollama_model: Name of the Ollama model to use
+            selected_model_path: Path to the selected .bin model file
         """
         super().__init__()
         self.config_manager = config_manager
         self.selected_audio_file = selected_audio_file
         self.system_prompt_path = system_prompt_path
         self.ollama_model = ollama_model
+        self.selected_model_path = selected_model_path
     
     def run(self) -> None:
         """Execute the transcription and note generation process."""
@@ -52,7 +55,7 @@ class ProcessingWorker(QThread):
             
             transcriber = AudioTranscriber(
                 self.config_manager.app_config.main_exe_path,
-                self.config_manager.app_config.model_path
+                self.selected_model_path
             )
             transcript = transcriber.transcribe(self.selected_audio_file)
             self.log.emit("Transcription complete.")

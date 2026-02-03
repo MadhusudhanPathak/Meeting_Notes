@@ -29,11 +29,12 @@ class ConfigManager:
     """Manages application configuration and validation."""
     
     def __init__(self, input_dir: str = "input", output_dir: str = "output"):
+        # Look for main.exe and Whisper.dll in the current directory
         self.app_config = AppConfig(
             input_dir=input_dir,
             output_dir=output_dir,
-            main_exe_path=os.path.join(input_dir, "main.exe"),
-            whisper_dll_path=os.path.join(input_dir, "Whisper.dll"),
+            main_exe_path="main.exe",  # Look in current directory
+            whisper_dll_path="Whisper.dll",  # Look in current directory
             model_path=self._find_model_file(input_dir),
             system_prompt_paths=self._find_system_prompt_files(input_dir)
         )
@@ -43,6 +44,11 @@ class ConfigManager:
         """Find the first .bin model file in the input directory."""
         models = glob.glob(os.path.join(input_dir, "*.bin"))
         return models[0] if models else None
+
+    @staticmethod
+    def get_all_model_files(input_dir: str) -> List[str]:
+        """Get all .bin model files in the input directory."""
+        return glob.glob(os.path.join(input_dir, "*.bin"))
     
     @staticmethod
     def _find_system_prompt_files(input_dir: str) -> List[str]:

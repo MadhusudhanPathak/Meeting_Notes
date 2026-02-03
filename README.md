@@ -38,7 +38,7 @@ A professional desktop application for generating structured meeting notes from 
 
 3. Set up Whisper.cpp:
    - Download Whisper.cpp binaries from [GitHub](https://github.com/Const-me/Whisper)
-   - Place `main.exe` and `Whisper.dll` in the `input/` directory
+   - Place `main.exe` and `Whisper.dll` in the **current directory** (same directory as main.py)
    - Download a Whisper model (e.g., `ggml-medium.bin`) and place it in the `input/` directory
 
 4. Set up Ollama:
@@ -51,14 +51,18 @@ A professional desktop application for generating structured meeting notes from 
 
 ## Configuration
 
-The application expects the following structure in the `input/` directory:
+The application expects the following structure:
+
 ```
-input/
-├── main.exe          # Whisper.cpp executable
-├── Whisper.dll       # Whisper.cpp dependency
+main.exe              # Whisper.cpp executable (in current directory)
+Whisper.dll           # Whisper.cpp dependency (in current directory)
+input/                # Input directory (created automatically if not exists)
 ├── ggml-*.bin        # Whisper model file(s)
 └── System_Prompt*.txt # System prompt template(s)
+output/               # Output directory (created automatically if not exists)
 ```
+
+The application will automatically create `input/` and `output/` directories if they don't exist.
 
 ## Usage
 
@@ -75,11 +79,13 @@ input/
 
 5. Select a system prompt template
 
-6. Click "Generate Meeting Notes"
+6. Select a Whisper model (.bin file) from the dropdown
 
-7. Monitor progress in the log panel
+7. Click "Generate Meeting Notes"
 
-8. Save the generated transcript (TXT) and notes (PDF) to your desired location
+8. Monitor progress in the log panel
+
+9. The generated transcript (TXT) and notes (PDF) will be automatically saved to the `output/` directory
 
 ## Architecture
 
@@ -128,7 +134,11 @@ python -m pytest tests/integration/
 
 ### Common Issues
 
-**"main.exe not found"**: Ensure Whisper.cpp binaries are in the `input/` directory
+**"main.exe not found"**: Ensure Whisper.cpp binaries are in the **current directory** (same directory as main.py)
+
+**"Whisper.dll not found"**: Ensure Whisper.cpp binaries are in the **current directory** (same directory as main.py)
+
+**"No .bin model file found"**: Ensure at least one .bin model file is in the `input/` directory
 
 **"Cannot connect to Ollama"**: Verify Ollama is running (`ollama serve`)
 
