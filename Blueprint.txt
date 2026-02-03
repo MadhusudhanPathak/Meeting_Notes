@@ -1,0 +1,97 @@
+**Project: Local Meeting Notes Desktop Application**
+
+**Objective:**
+Create a Windows desktop application that processes meeting audio files locally and generates formatted meeting notes. The application must work entirely offline (except for initial setup) and handle all processing on the user's machine. Use only Python.
+
+**Core Functionality:**
+
+1. **Input Processing:**
+   - Accept audio files in MP3 or WAV format via file selection dialog
+   - Transcribe audio to text using Whisper.cpp implementation from: https://github.com/Const-me/Whisper
+   - Recommend the model from: https://huggingface.co/ggerganov/whisper.cpp/tree/main for transcription
+
+2. **Output Generation:**
+   - Generate a PDF file containing formatted meeting notes
+   - Generate a separate TXT file with the complete meeting transcript
+   - Both files should be saved to a user-specified location with meaningful default names (e.g., "Meeting_Notes_[timestamp].pdf")
+
+3. **Configuration System:**
+   - Read a "System_Prompt.txt" file from the "input" folder in application's working directory that contains the base system prompt for meeting note generation
+   - Locate and use .bin model, "main.exe" and "Whisper.dll" file from the "input" folder in the working directory for audio transcription (Whisper model file)
+   - Provide a dropdown menu allowing users to select from available locally-installed Ollama models
+   - Provide a dropdown menu for selecting different system prompt files (if multiple exist in the directory)
+
+**Technical Requirements:**
+
+1. **Audio Transcription:**
+   - Integrate Whisper.cpp (https://github.com/Const-me/Whisper) for speech-to-text conversion
+   - Support loading .bin model files for Whisper
+   - Use "main.exe" and "Whisper.dll" for transcription
+   - Display transcription progress to the user
+
+2. **Meeting Notes Generation:**
+   - Use Ollama API to process transcripts and generate structured meeting notes
+   - Apply the system prompt from the selected System_Prompt.txt file
+   - Allow users to select which Ollama model to use from their local installation
+
+3. **Startup Validation:**
+   When the application launches, perform comprehensive checks in this order:
+   - Scan current working directory for:
+     * System_Prompt.txt file (warn if missing)
+     * .bin Whisper model file (warn if missing)
+     * Any other required configuration files
+   - Check for Ollama installation (verify it's running/accessible)
+   - Verify Whisper dependencies are available
+   - Display clear, actionable error messages for any missing components
+   - Provide direct links or instructions for acquiring missing dependencies:
+     * Download links for Whisper models
+     * Installation instructions for Ollama
+     * Template for System_Prompt.txt file
+
+**User Interface Requirements:**
+
+Design an intuitive, modern Windows desktop GUI with the following elements:
+
+1. **Main Window Layout:**
+   - Clean, professional appearance with logical grouping of controls
+   - Status indicator showing system readiness (all dependencies met)
+   - Clear visual feedback during processing operations
+
+2. **Key UI Components:**
+   - "Select Audio File" button with file browser (filter for .mp3, .wav)
+   - Dropdown for Ollama model selection (populated from local installation)
+   - Dropdown for System Prompt selection (if multiple prompt files exist)
+   - "Make meeting notes" button (disabled until valid files are selected)
+   - Progress bar with status text for transcription and note generation
+   - Settings/Configuration panel for dependency paths
+
+3. **Error Handling:**
+   - Graceful error messages with suggestions for resolution
+   - Non-blocking warnings that allow users to proceed or fix issues
+   - Validation before processing begins
+
+**User Experience Flow:**
+
+1. User launches application
+2. App performs dependency checks and displays status
+3. If dependencies missing, show friendly setup wizard with instructions
+4. User selects audio file, Ollama model, and system prompt
+5. User clicks "Process Meeting"
+6. App displays progress for transcription phase
+7. App displays progress for note generation phase
+8. User reviews output and saves to desired location
+9. Success confirmation with option to process another meeting
+
+**Technical Stack Suggestions:**
+- Use a modern Windows GUI framework
+- Ensure proper async/await handling for long-running operations
+- Implement proper resource cleanup for audio processing
+- Use structured logging for debugging
+
+**Deliverables:**
+- Complete, functional Windows desktop application
+- Clear README with setup instructions
+- Example System_Prompt.txt template
+- Error handling for all common failure scenarios
+
+Generate complete, production-ready code with proper error handling, user feedback, and professional UI design.
