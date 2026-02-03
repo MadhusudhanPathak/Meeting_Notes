@@ -53,7 +53,7 @@ class ConfigManager:
     @staticmethod
     def _find_system_prompt_files(input_dir: str) -> List[str]:
         """Find all system prompt files in the input directory."""
-        return glob.glob(os.path.join(input_dir, "System_Prompt*.txt"))
+        return glob.glob(os.path.join(input_dir, "*.txt"))
     
     def get_system_prompt(self, file_path: str) -> Optional[str]:
         """Read and return the content of a system prompt file."""
@@ -70,19 +70,26 @@ class ConfigManager:
     def validate(self) -> List[str]:
         """Validate all required dependencies and return a list of errors."""
         errors = []
-        
+
         if not os.path.exists(self.app_config.main_exe_path):
-            errors.append(f"main.exe not found in {self.app_config.input_dir}")
-        
+            errors.append(f"ERROR: main.exe not found in current directory. Please download Whisper.cpp binaries from https://github.com/Const-me/Whisper and place main.exe in the same directory as main.py")
+
         if not os.path.exists(self.app_config.whisper_dll_path):
-            errors.append(f"Whisper.dll not found in {self.app_config.input_dir}")
-        
+            errors.append(f"ERROR: Whisper.dll not found in current directory. Please download Whisper.cpp binaries from https://github.com/Const-me/Whisper and place Whisper.dll in the same directory as main.py")
+
         if not self.app_config.model_path:
-            errors.append(f"No .bin model file found in {self.app_config.input_dir}")
-        
+            errors.append(f"ERROR: No .bin model file found in {self.app_config.input_dir}. Please download a model file from https://huggingface.co/ggerganov/whisper.cpp/tree/main and place it in the input folder. You can have multiple .bin files in the input folder and select from the dropdown.")
+
         if not self.app_config.system_prompt_paths:
-            errors.append(f"No System_Prompt*.txt file found in {self.app_config.input_dir}")
-        
+            errors.append(f"ERROR: No System_Prompt*.txt file found in {self.app_config.input_dir}. Please create a text file with your base system prompt for meeting notes generation in the input folder. You can have multiple system prompt files in the input folder and select from the dropdown.")
+
+        # Add general guidance message
+        if errors:
+            errors.append("")
+            errors.append("INFO: For more information, please read the README.md file in the project directory.")
+            errors.append("INFO: You can download .bin model files from https://huggingface.co/ggerganov/whisper.cpp/tree/main")
+            errors.append("INFO: Create a text file with your system prompt in the input folder (e.g., System_Prompt_Meeting_Notes.txt)")
+
         return errors
 
 

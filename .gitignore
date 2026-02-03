@@ -3,9 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Input and output directories
-input/
-output/
+# Ignore contents but not the directories themselves
+input/*
+output/*
 
 # OS generated files
 .DS_Store
@@ -45,3 +45,5 @@ ENV/
 # Local configuration files
 config.local
 settings.local
+
+.mp3

@@ -8,11 +8,11 @@ from pathlib import Path
 from typing import Optional
 
 from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-    QLabel, QComboBox, QFileDialog, QProgressBar, QTextEdit, 
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+    QLabel, QComboBox, QFileDialog, QProgressBar, QTextEdit,
     QMessageBox, QGroupBox
 )
-from PyQt5.QtCore import QThread
+from PyQt5.QtCore import QThread, Qt
 
 from src.config.settings import ConfigManager
 from src.core.note_generator import NoteGenerator, NoteGenerationError
@@ -41,44 +41,162 @@ class MainWindow(QMainWindow):
     
     def setup_ui(self) -> None:
         """Setup the user interface components."""
+        # Set application stylesheet for consistent styling
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #dcf2ee;
+                font-family: 'Times New Roman', serif;
+                font-size: 12pt;
+            }
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #8fbcc9;
+                border-radius: 8px;
+                margin-top: 1ex;
+                padding-top: 10px;
+                background-color: #d7f7f0;
+                font-family: 'Times New Roman', serif;
+                font-size: 12pt;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                color: #006666;
+                font-family: 'Times New Roman', serif;
+                font-weight: bold;
+                font-size: 13pt;
+            }
+            QPushButton {
+                background-color: #a3e9da;
+                border: 2px solid #7fc2b7;
+                border-radius: 12px;
+                padding: 10px;
+                font-weight: bold;
+                min-height: 35px;
+                font-family: 'Times New Roman', serif;
+                font-size: 12pt;
+            }
+            QPushButton#generateButton {
+                background-color: #8dd8c8;
+                border: 2px solid #6bb5a3;
+                border-radius: 15px;
+                padding: 15px;
+                font-weight: bold;
+                font-size: 64pt;
+                min-height: 90px;
+                font-family: 'Times New Roman', serif;
+            }
+            QPushButton#generateButton:hover {
+                background-color: #b3f2e5;
+            }
+            QPushButton#generateButton:pressed {
+                background-color: #b3f2e5;
+            }
+            QPushButton:hover {
+                background-color: #b3f2e5;
+            }
+            QPushButton:pressed {
+                background-color: #b3f2e5;
+            }
+            QPushButton:disabled {
+                background-color: #c0e0da;
+                color: #888888;
+            }
+            QComboBox {
+                border: 2px solid #7fc2b7;
+                border-radius: 8px;
+                padding: 8px;
+                background-color: white;
+                min-height: 35px;
+                font-family: 'Times New Roman', serif;
+                font-size: 12pt;
+            }
+            QComboBox:focus {
+                border: 2px solid #5fa897;
+            }
+            QProgressBar {
+                border: 2px solid #7fc2b7;
+                border-radius: 8px;
+                text-align: center;
+                font-weight: bold;
+                color: #006666;
+                font-family: 'Times New Roman', serif;
+                font-size: 12pt;
+            }
+            QProgressBar::chunk {
+                background-color: #79c7b5;
+                border-radius: 6px;
+            }
+            QTextEdit {
+                border: 2px solid #7fc2b7;
+                border-radius: 8px;
+                background-color: white;
+                font-family: 'Times New Roman', serif;
+                font-size: 11pt;
+            }
+            QLabel {
+                color: #004d4d;
+                font-weight: bold;
+                font-family: 'Times New Roman', serif;
+                font-size: 12pt;
+            }
+        """)
+
         # Central widget and main layout
         central_widget = QWidget()
+        central_widget.setStyleSheet("background-color: #dcf2ee; font-family: 'Times New Roman', serif; font-size: 12pt;")
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        
+        main_layout.setSpacing(10)
+
         # Title label
         title_label = QLabel("Local Meeting Notes Generator")
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("""
+            font-family: 'Times New Roman', serif;
+            font-size: 26px;
+            font-weight: bold;
+            color: #004d4d;
+            padding: 15px;
+            background-color: #9de3d3;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        """)
         main_layout.addWidget(title_label)
-        
+
         # Status group
         status_group = QGroupBox("Status")
         status_layout = QVBoxLayout()
         self.status_label = QLabel("Status: Initializing...")
+        self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setStyleSheet("font-family: 'Times New Roman', serif; font-weight: bold; font-size: 13pt;")
         status_layout.addWidget(self.status_label)
         status_group.setLayout(status_layout)
         main_layout.addWidget(status_group)
-        
+
         # Controls group
         controls_group = QGroupBox("Controls")
         controls_layout = QVBoxLayout()
-        
+
         # Audio file selection
         audio_layout = QHBoxLayout()
+        self.audio_file_label = QLabel("No file selected")
+        self.audio_file_label.setWordWrap(True)
+        self.audio_file_label.setStyleSheet("font-family: 'Times New Roman', serif; font-weight: bold; font-size: 12pt;")
         self.select_audio_button = QPushButton("Select Audio File")
         self.select_audio_button.clicked.connect(self.select_audio_file)
-        self.audio_file_label = QLabel("No file selected")
-        audio_layout.addWidget(self.select_audio_button)
-        audio_layout.addWidget(self.audio_file_label)
+        audio_layout.addWidget(self.audio_file_label)  # File detail on the left
+        audio_layout.addWidget(self.select_audio_button)  # Button on the right
         controls_layout.addLayout(audio_layout)
-        
+
         # Model selection
         model_layout = QHBoxLayout()
         model_layout.addWidget(QLabel("Ollama Model:"))
         self.ollama_model_combo = QComboBox()
         model_layout.addWidget(self.ollama_model_combo)
         controls_layout.addLayout(model_layout)
-        
+
         # System prompt selection
         prompt_layout = QHBoxLayout()
         prompt_layout.addWidget(QLabel("System Prompt:"))
@@ -88,20 +206,21 @@ class MainWindow(QMainWindow):
 
         # Model selection (for .bin files)
         model_bin_layout = QHBoxLayout()
-        model_bin_layout.addWidget(QLabel(".bin Model:"))
+        model_bin_layout.addWidget(QLabel("Transcription Model:"))
         self.model_bin_combo = QComboBox()
         model_bin_layout.addWidget(self.model_bin_combo)
         controls_layout.addLayout(model_bin_layout)
-        
+
         # Process button
         self.make_notes_button = QPushButton("Generate Meeting Notes")
+        self.make_notes_button.setObjectName("generateButton")  # Apply special styling
         self.make_notes_button.setEnabled(False)
         self.make_notes_button.clicked.connect(self.generate_notes)
         controls_layout.addWidget(self.make_notes_button)
-        
+
         controls_group.setLayout(controls_layout)
         main_layout.addWidget(controls_group)
-        
+
         # Progress section
         progress_group = QGroupBox("Progress")
         progress_layout = QVBoxLayout()
@@ -109,12 +228,13 @@ class MainWindow(QMainWindow):
         progress_layout.addWidget(self.progress_bar)
         progress_group.setLayout(progress_layout)
         main_layout.addWidget(progress_group)
-        
-        # Log section
+
+        # Log section (reduced height)
         log_group = QGroupBox("Log")
         log_layout = QVBoxLayout()
         self.log_text_edit = QTextEdit()
         self.log_text_edit.setReadOnly(True)
+        self.log_text_edit.setMaximumHeight(150)  # Reduced height
         log_layout.addWidget(self.log_text_edit)
         log_group.setLayout(log_layout)
         main_layout.addWidget(log_group)
@@ -126,23 +246,28 @@ class MainWindow(QMainWindow):
         
         try:
             ollama_models = self.note_generator.get_available_models()
+            if not ollama_models:
+                config_errors.append("ERROR: No Ollama models found. Please download and set up models using Ollama (e.g., run 'ollama pull llama2' in terminal). Visit https://ollama.ai to download and install Ollama.")
         except NoteGenerationError as e:
             ollama_models = []
+            # The error message is already detailed in the NoteGenerator
             config_errors.append(str(e))
         
         if config_errors:
             self.status_label.setText("Status: Error - Missing Dependencies")
             for error in config_errors:
-                self.log_text_edit.append(f"- {error}")
+                self.log_text_edit.append(f"{error}")
             self.make_notes_button.setEnabled(False)
-            
-            # Show error dialog
+
+            # Show error dialog with detailed information
             error_msg = "\n".join(config_errors)
             QMessageBox.critical(
-                self, 
-                "Dependency Error", 
+                self,
+                "Dependency Error",
                 f"The application is missing required dependencies:\n\n{error_msg}\n\n"
-                "Please ensure all required files are in the 'input' directory and Ollama is running."
+                "Please follow the instructions above to download and set up the required components.\n\n"
+                "Visit https://ollama.ai to download and install Ollama, and keep it running when using this application.\n\n"
+                "Read the README.md file in the project directory for more information."
             )
         else:
             self.status_label.setText("Status: Ready")

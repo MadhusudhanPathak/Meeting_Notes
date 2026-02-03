@@ -20,7 +20,7 @@ The application expects the following files in the `input` directory:
 - `main.exe` - Whisper.cpp executable
 - `Whisper.dll` - Whisper.cpp dependency
 - `.bin` model files (e.g., `ggml-medium.bin`) - Whisper models
-- `System_Prompt*.txt` - System prompt templates for note generation
+- `*.txt` - System prompt templates for note generation (any .txt file in the input folder)
 
 ## Key Features
 - Audio file selection (MP3/WAV/M4A/FLAC/AAC/OGG support)
@@ -32,6 +32,10 @@ The application expects the following files in the `input` directory:
 - Dependency validation on startup
 - Comprehensive error handling and input validation
 - Professional UI with responsive design
+- Modern UI design with Times New Roman font, teal color scheme (#dcf2ee), and intuitive layout
+- Larger, more prominent "Generate Meeting Notes" button with 64pt font
+- Improved button hover and selection effects
+- Rearranged controls with file details on left and action buttons on right
 
 ## Technical Details
 
@@ -41,6 +45,8 @@ The application expects the following files in the `input` directory:
 - Progress bar and log display for user feedback
 - Worker thread handles transcription and note generation sequentially
 - Modular UI components with clear separation of concerns
+- Modern styling with Times New Roman font, teal color scheme, and rounded corners
+- Responsive layout with appropriate sizing for all elements
 
 ### Processing Pipeline
 1. Audio transcription using Whisper.cpp (local processing)
@@ -57,10 +63,10 @@ The application expects the following files in the `input` directory:
 
 ### Configuration Validation
 The application validates the following on startup:
-- Presence of `main.exe` in the input directory
-- Presence of `Whisper.dll` in the input directory
-- At least one `.bin` model file in the input directory
-- At least one `System_Prompt*.txt` file in the input directory
+- Presence of `main.exe` in the current directory
+- Presence of `Whisper.dll` in the current directory
+- At least one `.bin` model file in the `input/` directory
+- At least one `*.txt` file in the `input/` directory for system prompts
 - Accessibility of local Ollama instance
 
 ## File Descriptions
@@ -70,18 +76,19 @@ Application entry point that creates and shows the main window.
 
 ### src/ui/main_window.py
 Contains the MainWindow class with:
-- UI layout and widgets
+- UI layout and widgets with modern styling
 - File selection functionality
 - Processing workflow management
 - Background worker thread implementation
 - Progress and logging display
 - Comprehensive error handling and user feedback
+- Modern UI elements with Times New Roman font and teal color scheme
 
 ### src/config/settings.py
 Contains the ConfigManager class that:
 - Manages paths to required executables and models
 - Validates dependencies
-- Handles system prompt file discovery and loading
+- Handles system prompt file discovery and loading (now supports all .txt files)
 - Implements configuration validation with detailed error reporting
 
 ### src/models/transcriber.py
@@ -97,6 +104,7 @@ Contains the NoteGenerator class that:
 - Generates structured meeting notes from transcripts
 - Manages available model discovery
 - Implements retry strategies and timeout handling
+- Provides detailed error messages for Ollama issues
 
 ### src/utils/helpers.py
 Contains utility functions for:
@@ -115,16 +123,20 @@ Contains the ProcessingWorker class that:
 1. Application starts and validates dependencies
 2. User selects an audio file
 3. User chooses Ollama model and system prompt
-4. User initiates processing
-5. Application transcribes audio using Whisper.cpp
-6. Application generates notes using Ollama
-7. User saves transcript (TXT) and notes (PDF) to desired locations
+4. User selects Whisper model for transcription
+5. User initiates processing
+6. Application transcribes audio using Whisper.cpp
+7. Application generates notes using Ollama
+8. Application saves transcript (TXT) and notes (PDF) to output directory
 
 ## Important Notes
-- The application requires Whisper.cpp binaries and models to be placed in the input directory
-- Ollama must be running locally for note generation to work
+- The application requires Whisper.cpp binaries and models to be placed in the appropriate directories
+- Ollama must be installed and running locally for note generation to work
 - All processing happens locally on the user's machine
 - The application generates both raw transcripts and AI-enhanced meeting notes
-- The codebase now follows industry-standard architecture with clear separation of concerns
+- The codebase follows industry-standard architecture with clear separation of concerns
 - Proper error handling and input validation have been implemented throughout
-- The application is now more maintainable and scalable for future enhancements
+- The application has a modern UI with Times New Roman font and teal color scheme
+- The "Generate Meeting Notes" button is prominently displayed with large text
+- The application now supports all .txt files in the input folder as system prompts
+- Improved error messages guide users to download required components from appropriate sources

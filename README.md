@@ -9,7 +9,6 @@ A professional desktop application for generating structured meeting notes from 
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [Architecture](#architecture)
-- [Development](#development)
 - [Troubleshooting](#troubleshooting)
 
 ## Features
@@ -21,6 +20,7 @@ A professional desktop application for generating structured meeting notes from 
 - **Model Selection**: Choose from multiple available Ollama models
 - **Prompt Customization**: Use custom system prompts for tailored note generation
 - **Robust Error Handling**: Comprehensive error management and user feedback
+- **Modern UI Design**: Clean interface with Times New Roman font, teal color scheme, and intuitive layout
 
 ## Prerequisites
 
@@ -39,7 +39,7 @@ A professional desktop application for generating structured meeting notes from 
 3. Set up Whisper.cpp:
    - Download Whisper.cpp binaries from [GitHub](https://github.com/Const-me/Whisper)
    - Place `main.exe` and `Whisper.dll` in the **current directory** (same directory as main.py)
-   - Download a Whisper model (e.g., `ggml-medium.bin`) and place it in the `input/` directory
+   - Download a Whisper model (e.g., from [Hugging Face](https://huggingface.co/ggerganov/whisper.cpp/tree/main)) and place it in the `input/` directory
 
 4. Set up Ollama:
    - Install Ollama from [ollama.ai](https://ollama.ai)
@@ -47,7 +47,7 @@ A professional desktop application for generating structured meeting notes from 
 
 5. Configure system prompts:
    - Create one or more system prompt files in the `input/` directory
-   - Name them with the pattern `System_Prompt*.txt`
+   - Name them with any `.txt` extension (e.g., `meeting_prompt.txt`, `System_Prompt_Meeting_Notes.txt`)
 
 ## Configuration
 
@@ -57,8 +57,8 @@ The application expects the following structure:
 main.exe              # Whisper.cpp executable (in current directory)
 Whisper.dll           # Whisper.cpp dependency (in current directory)
 input/                # Input directory (created automatically if not exists)
-├── ggml-*.bin        # Whisper model file(s)
-└── System_Prompt*.txt # System prompt template(s)
+├── *.bin             # Whisper model file(s)
+└── *.txt             # System prompt template(s)
 output/               # Output directory (created automatically if not exists)
 ```
 
@@ -107,29 +107,6 @@ src/
     └── processing_worker.py # Threading for long operations
 ```
 
-## Development
-
-### Running Tests
-```bash
-# Run unit tests
-python -m pytest tests/unit/
-
-# Run integration tests
-python -m pytest tests/integration/
-```
-
-### Code Standards
-- Follow PEP 8 style guidelines
-- Use type hints for all public functions
-- Write docstrings for all modules, classes, and public methods
-- Handle exceptions appropriately with custom exception types
-
-### Adding New Features
-1. Create feature-specific modules in the appropriate directory
-2. Follow the existing patterns for error handling and logging
-3. Add unit tests for new functionality
-4. Update documentation as needed
-
 ## Troubleshooting
 
 ### Common Issues
@@ -138,13 +115,13 @@ python -m pytest tests/integration/
 
 **"Whisper.dll not found"**: Ensure Whisper.cpp binaries are in the **current directory** (same directory as main.py)
 
-**"No .bin model file found"**: Ensure at least one .bin model file is in the `input/` directory
+**"No .bin model file found"**: Ensure at least one .bin model file is in the `input/` directory. Download from [Hugging Face](https://huggingface.co/ggerganov/whisper.cpp/tree/main)
 
-**"Cannot connect to Ollama"**: Verify Ollama is running (`ollama serve`)
+**"Cannot connect to Ollama"**: Verify Ollama is installed and running (`ollama serve` in terminal)
 
-**"No models available"**: Pull a model with `ollama pull <model-name>`
+**"No models available"**: Pull a model with `ollama pull <model-name>` (e.g., `ollama pull llama2`)
 
-**"Invalid audio format"**: Ensure audio file is in a supported format (MP3, WAV, etc.)
+**"Invalid audio format"**: Ensure audio file is in a supported format (MP3, WAV, M4A, FLAC, AAC, OGG)
 
 ### Getting Help
 

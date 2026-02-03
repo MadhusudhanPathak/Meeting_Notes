@@ -64,13 +64,13 @@ class NoteGenerator:
             return models
             
         except requests.exceptions.ConnectionError:
-            raise NoteGenerationError("Cannot connect to Ollama. Is it running?")
+            raise NoteGenerationError("ERROR: Cannot connect to Ollama. Please ensure Ollama is installed and running (run 'ollama serve' in terminal). Visit https://ollama.ai to download and install Ollama.")
         except requests.exceptions.HTTPError as e:
-            raise NoteGenerationError(f"HTTP error from Ollama API: {e}")
+            raise NoteGenerationError(f"ERROR: HTTP error from Ollama API: {e}")
         except requests.exceptions.RequestException as e:
-            raise NoteGenerationError(f"Request error when getting Ollama models: {e}")
+            raise NoteGenerationError(f"ERROR: Request error when getting Ollama models: {e}")
         except (KeyError, TypeError, json.JSONDecodeError) as e:
-            raise NoteGenerationError(f"Error parsing Ollama response: {e}")
+            raise NoteGenerationError(f"ERROR: Error parsing Ollama response: {e}")
     
     def generate_notes(self, transcript: str, system_prompt: str, model: str) -> str:
         """
