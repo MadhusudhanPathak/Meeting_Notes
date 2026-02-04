@@ -1,6 +1,6 @@
 # Local Meeting Notes Generator
 
-A professional desktop application for generating structured meeting notes from audio recordings using local processing with Whisper.cpp and Ollama.
+A desktop application that processes meeting audio files locally and generates formatted meeting notes. The application works entirely offline (except for initial setup) and handles all processing on the user's machine.
 
 ## YouTube Introduction & Tutorial
  https://youtu.be/WZOufhzwrFU
