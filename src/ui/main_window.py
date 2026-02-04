@@ -10,7 +10,7 @@ from typing import Optional
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QComboBox, QFileDialog, QProgressBar, QTextEdit,
-    QMessageBox, QGroupBox
+    QMessageBox, QGroupBox, QApplication
 )
 from PyQt5.QtCore import QThread, Qt
 
@@ -33,6 +33,8 @@ class MainWindow(QMainWindow):
         self.config_manager = ConfigManager()
         self.note_generator = NoteGenerator()
         self.selected_audio_file: Optional[str] = None
+        self.selected_batch_files: list = []
+        self.batch_processing_index: int = 0
         self.worker: Optional[QThread] = None
         
         # Setup UI
@@ -81,10 +83,10 @@ class MainWindow(QMainWindow):
                 background-color: #8dd8c8;
                 border: 2px solid #6bb5a3;
                 border-radius: 15px;
-                padding: 15px;
+                padding: 10px;
                 font-weight: bold;
-                font-size: 64pt;
-                min-height: 90px;
+                font-size: 16pt;
+                min-height: 40px;
                 font-family: 'Times New Roman', serif;
             }
             QPushButton#generateButton:hover {
@@ -94,10 +96,10 @@ class MainWindow(QMainWindow):
                 background-color: #b3f2e5;
             }
             QPushButton:hover {
-                background-color: #b3f2e5;
+                background-color: #9de3d3;
             }
             QPushButton:pressed {
-                background-color: #b3f2e5;
+                background-color: #7bc9ba;
             }
             QPushButton:disabled {
                 background-color: #c0e0da;
@@ -112,8 +114,12 @@ class MainWindow(QMainWindow):
                 font-family: 'Times New Roman', serif;
                 font-size: 12pt;
             }
+            QComboBox:hover {
+                background-color: #f0f9f7;
+            }
             QComboBox:focus {
                 border: 2px solid #5fa897;
+                background-color: #9de3d3;
             }
             QProgressBar {
                 border: 2px solid #7fc2b7;
@@ -151,11 +157,12 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(10)
 
         # Title label
-        title_label = QLabel("Local Meeting Notes Generator")
+        title_label = QLabel("<span>Local Meeting Notes Generator</span><br><span style='font-size: 16px;'>-by Madhusudhan Pathak</span>")
         title_label.setAlignment(Qt.AlignCenter)
+        title_label.setTextFormat(Qt.RichText)
         title_label.setStyleSheet("""
             font-family: 'Times New Roman', serif;
-            font-size: 26px;
+            font-size: 32px;
             font-weight: bold;
             color: #004d4d;
             padding: 15px;
@@ -164,16 +171,6 @@ class MainWindow(QMainWindow):
             margin-bottom: 10px;
         """)
         main_layout.addWidget(title_label)
-
-        # Status group
-        status_group = QGroupBox("Status")
-        status_layout = QVBoxLayout()
-        self.status_label = QLabel("Status: Initializing...")
-        self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("font-family: 'Times New Roman', serif; font-weight: bold; font-size: 13pt;")
-        status_layout.addWidget(self.status_label)
-        status_group.setLayout(status_layout)
-        main_layout.addWidget(status_group)
 
         # Controls group
         controls_group = QGroupBox("Controls")
@@ -186,8 +183,11 @@ class MainWindow(QMainWindow):
         self.audio_file_label.setStyleSheet("font-family: 'Times New Roman', serif; font-weight: bold; font-size: 12pt;")
         self.select_audio_button = QPushButton("Select Audio File")
         self.select_audio_button.clicked.connect(self.select_audio_file)
+        self.select_batch_button = QPushButton("Select Multiple Files")
+        self.select_batch_button.clicked.connect(self.select_batch_files)
         audio_layout.addWidget(self.audio_file_label)  # File detail on the left
-        audio_layout.addWidget(self.select_audio_button)  # Button on the right
+        audio_layout.addWidget(self.select_audio_button)  # Single file button
+        audio_layout.addWidget(self.select_batch_button)  # Batch file button
         controls_layout.addLayout(audio_layout)
 
         # Model selection
@@ -229,21 +229,23 @@ class MainWindow(QMainWindow):
         progress_group.setLayout(progress_layout)
         main_layout.addWidget(progress_group)
 
-        # Log section (reduced height)
+        # Log section (increased height)
         log_group = QGroupBox("Log")
         log_layout = QVBoxLayout()
         self.log_text_edit = QTextEdit()
         self.log_text_edit.setReadOnly(True)
-        self.log_text_edit.setMaximumHeight(150)  # Reduced height
+        self.log_text_edit.setMinimumHeight(250)  # Increased height
         log_layout.addWidget(self.log_text_edit)
         log_group.setLayout(log_layout)
         main_layout.addWidget(log_group)
     
     def check_dependencies(self) -> None:
         """Check for required dependencies and update UI accordingly."""
-        self.log_text_edit.append("Checking dependencies...")
+        self.log_text_edit.append("Status: Checking dependencies...")
+        QApplication.processEvents()  # Allow UI to update
+
         config_errors = self.config_manager.validate()
-        
+
         try:
             ollama_models = self.note_generator.get_available_models()
             if not ollama_models:
@@ -252,9 +254,9 @@ class MainWindow(QMainWindow):
             ollama_models = []
             # The error message is already detailed in the NoteGenerator
             config_errors.append(str(e))
-        
+
         if config_errors:
-            self.status_label.setText("Status: Error - Missing Dependencies")
+            self.log_text_edit.append("Status: Error - Missing Dependencies")
             for error in config_errors:
                 self.log_text_edit.append(f"{error}")
             self.make_notes_button.setEnabled(False)
@@ -270,13 +272,14 @@ class MainWindow(QMainWindow):
                 "Read the README.md file in the project directory for more information."
             )
         else:
-            self.status_label.setText("Status: Ready")
+            self.log_text_edit.append("Status: Ready")
             self.log_text_edit.append("All dependencies are met.")
-            
+            QApplication.processEvents()  # Allow UI to update
+
             # Populate model combo
             self.ollama_model_combo.clear()
             self.ollama_model_combo.addItems(ollama_models)
-            
+
             # Populate system prompt combo
             self.system_prompt_combo.clear()
             for prompt_path in self.config_manager.app_config.system_prompt_paths:
@@ -297,12 +300,12 @@ class MainWindow(QMainWindow):
     def select_audio_file(self) -> None:
         """Handle audio file selection."""
         file_name, _ = QFileDialog.getOpenFileName(
-            self, 
-            "Open Audio File", 
-            "", 
+            self,
+            "Open Audio File",
+            "",
             "Audio Files (*.mp3 *.wav *.m4a *.flac *.aac *.ogg)"
         )
-        
+
         if file_name:
             # Validate the selected file
             if not validate_audio_file(file_name):
@@ -312,28 +315,73 @@ class MainWindow(QMainWindow):
                     "Selected file is not a supported audio format.\nSupported formats: MP3, WAV, M4A, FLAC, AAC, OGG"
                 )
                 return
-            
+
             self.selected_audio_file = file_name
+            self.selected_batch_files = []  # Clear batch selection when single file is selected
             self.audio_file_label.setText(f"Selected: {os.path.basename(file_name)}")
             self.log_text_edit.append(f"Selected audio file: {file_name}")
             self.make_notes_button.setEnabled(True)
+
+    def select_batch_files(self) -> None:
+        """Handle batch audio file selection."""
+        file_names, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Open Audio Files",
+            "",
+            "Audio Files (*.mp3 *.wav *.m4a *.flac *.aac *.ogg)"
+        )
+
+        if file_names:
+            valid_files = []
+            invalid_count = 0
+
+            for file_name in file_names:
+                if validate_audio_file(file_name):
+                    valid_files.append(file_name)
+                else:
+                    invalid_count += 1
+
+            if invalid_count > 0:
+                QMessageBox.warning(
+                    self,
+                    "Invalid Files",
+                    f"{invalid_count} file(s) were not supported audio formats and were skipped.\nSupported formats: MP3, WAV, M4A, FLAC, AAC, OGG"
+                )
+
+            if valid_files:
+                self.selected_batch_files = valid_files
+                self.selected_audio_file = None  # Clear single file selection when batch is selected
+                self.audio_file_label.setText(f"Selected {len(valid_files)} files for batch processing")
+                self.log_text_edit.append(f"Selected {len(valid_files)} audio files for batch processing: {[os.path.basename(f) for f in valid_files]}")
+                self.make_notes_button.setEnabled(True)
+            else:
+                self.make_notes_button.setEnabled(False)
     
     def generate_notes(self) -> None:
         """Start the note generation process."""
-        if not self.selected_audio_file:
+        # Determine if we're processing a single file or batch
+        if self.selected_audio_file:
+            # Single file processing
+            self.process_single_file()
+        elif self.selected_batch_files:
+            # Batch processing
+            self.process_batch_files()
+        else:
             QMessageBox.warning(
                 self,
                 "No Audio File",
-                "Please select an audio file first."
+                "Please select an audio file or multiple files first."
             )
             return
-        
+
+    def process_single_file(self) -> None:
+        """Process a single audio file."""
         # Confirm overwrite if files exist
         base_name = Path(self.selected_audio_file).stem
         timestamped_base_name = get_timestamped_filename(base_name, "")
         # Remove the trailing dot from timestamped filename
         timestamped_base_name = timestamped_base_name[:-1] if timestamped_base_name.endswith('.') else timestamped_base_name
-        
+
         reply = QMessageBox.question(
             self,
             "Confirm Processing",
@@ -342,22 +390,22 @@ class MainWindow(QMainWindow):
             f"Continue?",
             QMessageBox.Yes | QMessageBox.No
         )
-        
+
         if reply != QMessageBox.Yes:
             return
-        
+
         # Disable UI during processing
         self.make_notes_button.setEnabled(False)
         self.select_audio_button.setEnabled(False)
         self.ollama_model_combo.setEnabled(False)
         self.system_prompt_combo.setEnabled(False)
         self.progress_bar.setValue(0)
-        
+
         # Get selected values
         system_prompt_path = self.system_prompt_combo.currentData()
         ollama_model = self.ollama_model_combo.currentText()
         selected_model_path = self.model_bin_combo.currentData()
-        
+
         # Create and start worker
         self.worker = ProcessingWorker(
             self.config_manager,
@@ -370,6 +418,90 @@ class MainWindow(QMainWindow):
         self.worker.log.connect(self.update_log)
         self.worker.finished.connect(self.generation_finished)
         self.worker.start()
+
+    def process_batch_files(self) -> None:
+        """Process multiple audio files in batch."""
+        if not self.selected_batch_files:
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "Confirm Batch Processing",
+            f"This will process {len(self.selected_batch_files)} audio files sequentially "
+            f"using the selected model and prompt.\n\n"
+            f"Continue?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if reply != QMessageBox.Yes:
+            return
+
+        # Disable UI during processing
+        self.make_notes_button.setEnabled(False)
+        self.select_audio_button.setEnabled(False)
+        self.ollama_model_combo.setEnabled(False)
+        self.system_prompt_combo.setEnabled(False)
+        self.progress_bar.setValue(0)
+
+        # Reset batch processing index
+        self.batch_processing_index = 0
+
+        # Start processing the first file
+        self.process_next_batch_file()
+
+    def process_next_batch_file(self) -> None:
+        """Process the next file in the batch."""
+        if self.batch_processing_index >= len(self.selected_batch_files):
+            # All files processed
+            self.log_text_edit.append("Batch processing completed!")
+            # Re-enable UI
+            self.make_notes_button.setEnabled(True)
+            self.select_audio_button.setEnabled(True)
+            self.ollama_model_combo.setEnabled(True)
+            self.system_prompt_combo.setEnabled(True)
+            return
+
+        # Get current file to process
+        current_file = self.selected_batch_files[self.batch_processing_index]
+
+        # Update log with progress
+        self.log_text_edit.append(f"Processing file {self.batch_processing_index + 1}/{len(self.selected_batch_files)}: {os.path.basename(current_file)}")
+
+        # Get selected values
+        system_prompt_path = self.system_prompt_combo.currentData()
+        ollama_model = self.ollama_model_combo.currentText()
+        selected_model_path = self.model_bin_combo.currentData()
+
+        # Create and start worker for current file
+        self.worker = ProcessingWorker(
+            self.config_manager,
+            current_file,
+            system_prompt_path,
+            ollama_model,
+            selected_model_path
+        )
+        self.worker.progress.connect(self.update_progress)
+        self.worker.log.connect(self.update_log)
+        # Connect to a batch-specific finished handler
+        self.worker.finished.connect(self.batch_generation_finished)
+        self.worker.start()
+
+    def batch_generation_finished(self, result: Optional[dict]) -> None:
+        """Handle completion of a single file in batch processing."""
+        self.progress_bar.setValue(100)
+
+        if result:
+            # Save files for current batch item
+            # The current file being processed is at index self.batch_processing_index
+            current_file_path = self.selected_batch_files[self.batch_processing_index]
+            self.save_files(result["notes"], result["transcript"], current_file_path)
+        else:
+            # Log error but continue with next file
+            self.log_text_edit.append(f"Failed to process file {self.batch_processing_index + 1}: {os.path.basename(self.selected_batch_files[self.batch_processing_index])}")
+
+        # Move to next file in batch
+        self.batch_processing_index += 1
+        self.process_next_batch_file()
     
     def update_progress(self, value: int) -> None:
         """Update the progress bar."""
@@ -382,25 +514,45 @@ class MainWindow(QMainWindow):
     def generation_finished(self, result: Optional[dict]) -> None:
         """Handle completion of the generation process."""
         self.progress_bar.setValue(100)
-        
+
         # Re-enable UI
         self.make_notes_button.setEnabled(True)
         self.select_audio_button.setEnabled(True)
         self.ollama_model_combo.setEnabled(True)
         self.system_prompt_combo.setEnabled(True)
-        
+
         if result:
-            self.save_files(result["notes"], result["transcript"])
+            # This is only for single file processing, so use self.selected_audio_file
+            self.save_files(result["notes"], result["transcript"], self.selected_audio_file)
         else:
-            QMessageBox.critical(
-                self,
-                "Processing Failed",
-                "The note generation process failed. Check the log for details."
-            )
+            # Only show error if not part of batch processing
+            if not self.selected_batch_files or self.batch_processing_index >= len(self.selected_batch_files):
+                QMessageBox.critical(
+                    self,
+                    "Processing Failed",
+                    "The note generation process failed. Check the log for details."
+                )
     
-    def save_files(self, notes: str, transcript: str) -> None:
+    def save_files(self, notes: str, transcript: str, audio_file_path: str = None) -> None:
         """Save the generated notes and transcript to three different files in the output folder."""
-        base_name = Path(self.selected_audio_file).stem
+        # Use the provided audio file path as the primary source
+        if audio_file_path:
+            file_path = audio_file_path
+        elif self.selected_audio_file:
+            file_path = self.selected_audio_file
+        else:
+            # If we're in batch mode, use the current batch file
+            if self.selected_batch_files and self.batch_processing_index > 0:
+                file_path = self.selected_batch_files[self.batch_processing_index - 1]
+            else:
+                QMessageBox.critical(
+                    self,
+                    "File Error",
+                    "No audio file path provided for saving."
+                )
+                return
+
+        base_name = Path(file_path).stem
         timestamped_base_name = get_timestamped_filename(base_name, "")
         # Remove the trailing dot from timestamped filename
         timestamped_base_name = timestamped_base_name[:-1] if timestamped_base_name.endswith('.') else timestamped_base_name
@@ -411,12 +563,17 @@ class MainWindow(QMainWindow):
         md_file_path = output_dir / f"{timestamped_base_name}_notes.md"
         pdf_file_path = output_dir / f"{timestamped_base_name}_notes.pdf"
 
+        # Ensure output directory exists
+        output_dir = txt_file_path.parent
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         # Save transcript
         try:
             with open(txt_file_path, "w", encoding="utf-8") as f:
                 f.write(transcript)
             self.log_text_edit.append(f"Transcript saved to {txt_file_path}")
         except Exception as e:
+            self.log_text_edit.append(f"Error saving transcript: {e}")
             QMessageBox.critical(
                 self,
                 "Save Error",
@@ -430,6 +587,7 @@ class MainWindow(QMainWindow):
                 f.write(notes)
             self.log_text_edit.append(f"Markdown notes saved to {md_file_path}")
         except Exception as e:
+            self.log_text_edit.append(f"Error saving markdown notes: {e}")
             QMessageBox.critical(
                 self,
                 "Save Error",
@@ -644,6 +802,7 @@ class MainWindow(QMainWindow):
             doc.build(story)
             self.log_text_edit.append(f"PDF notes saved to {pdf_file_path}")
         except ImportError:
+            self.log_text_edit.append("PDF library missing. Cannot save PDF. Install with 'pip install reportlab'")
             QMessageBox.warning(
                 self,
                 "PDF Library Missing",
@@ -651,20 +810,24 @@ class MainWindow(QMainWindow):
             )
             return
         except Exception as e:
+            self.log_text_edit.append(f"Error saving PDF: {e}")
             QMessageBox.critical(
                 self,
                 "Save Error",
                 f"Failed to save PDF: {e}"
             )
             return
-
-        # Show success message
-        QMessageBox.information(
-            self,
-            "Success",
-            f"Meeting notes and transcript have been generated successfully!\n\n"
-            f"Files saved to:\n"
-            f"- {txt_file_path} (Transcript)\n"
-            f"- {md_file_path} (Markdown Notes)\n"
-            f"- {pdf_file_path} (PDF Notes)"
-        )
+        # Show success message only for single file processing
+        if not self.selected_batch_files or len(self.selected_batch_files) == 0:
+            self.log_text_edit.append(f"Successfully processed: {Path(file_path).name}")
+            QMessageBox.information(
+                self,
+                "Success",
+                f"Meeting notes and transcript have been generated successfully!\n\n"
+                f"Files saved to:\n"
+                f"- {txt_file_path} (Transcript)\n"
+                f"- {md_file_path} (Markdown Notes)\n"
+                f"- {pdf_file_path} (PDF Notes)"
+            )
+        else:
+            self.log_text_edit.append(f"Successfully processed: {Path(file_path).name}")

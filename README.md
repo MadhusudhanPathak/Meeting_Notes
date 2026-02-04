@@ -2,12 +2,17 @@
 
 A professional desktop application for generating structured meeting notes from audio recordings using local processing with Whisper.cpp and Ollama.
 
+## Philosophy
+
+My base philosophy for making this is to promote local distilled Small Language Models (SMLs) use and promoting people to not go to Online available Large Language Models (LLMs) for each and every small thing, for instance making meeting notes. This is a great initiative in a lot of way, keeping everything local is good for Privacy, Security as well as for Environment and giving positive signal to AI Market. This program will be work well enough if you have any good performing model installed in a system with 16 GB RAM, Good CPU and Decent GPU. I use this pipeline for around 6 months and I got good enough suggestions to share how I make my meeting notes, then I thought of stitching it all together in this program.
+
 ## Table of Contents
 - [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
-- [Configuration](#configuration)
 - [Usage](#usage)
+- [Batch File Usage](#batch-file-usage)
+- [Configuration](#configuration)
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
 
@@ -38,7 +43,7 @@ A professional desktop application for generating structured meeting notes from 
 
 3. Set up Whisper.cpp:
    - Download Whisper.cpp binaries from [GitHub](https://github.com/Const-me/Whisper)
-   - Place `main.exe` and `Whisper.dll` in the **current directory** (same directory as main.py)
+   - Place `Whisper.exe` and `Whisper.dll` in the **current directory** (same directory as main.py)
    - Download a Whisper model (e.g., from [Hugging Face](https://huggingface.co/ggerganov/whisper.cpp/tree/main)) and place it in the `input/` directory
 
 4. Set up Ollama:
@@ -54,7 +59,7 @@ A professional desktop application for generating structured meeting notes from 
 The application expects the following structure:
 
 ```
-main.exe              # Whisper.cpp executable (in current directory)
+Whisper.exe           # Whisper.cpp executable (in current directory)
 Whisper.dll           # Whisper.cpp dependency (in current directory)
 input/                # Input directory (created automatically if not exists)
 ├── *.bin             # Whisper model file(s)
@@ -87,6 +92,24 @@ The application will automatically create `input/` and `output/` directories if 
 
 9. The generated transcript (TXT) and notes (PDF) will be automatically saved to the `output/` directory
 
+## Batch File Usage
+
+Alternatively, you can use the provided batch file `Meeting Notes.bat` to run the application with automatic dependency management:
+
+1. Double-click on `Meeting Notes.bat` to run the application
+
+2. The batch file will automatically:
+   - Check if Python is installed, and install it using winget if needed
+   - Check if winget is available (required for installing Python)
+   - Verify pip is available and install it if needed
+   - Check if all required packages from `requirements.txt` are installed
+   - Install any missing packages from `requirements.txt`
+   - Run the main application (`main.py`)
+   - Display status messages during the process
+   - Pause at the end to show completion status
+
+3. The batch file handles all setup requirements automatically, making it easier to run the application without manual dependency management.
+
 ## Architecture
 
 The application follows a modular architecture with clear separation of concerns:
@@ -111,7 +134,7 @@ src/
 
 ### Common Issues
 
-**"main.exe not found"**: Ensure Whisper.cpp binaries are in the **current directory** (same directory as main.py)
+**"Whisper.exe not found"**: Ensure Whisper.cpp binaries are in the **current directory** (same directory as main.py)
 
 **"Whisper.dll not found"**: Ensure Whisper.cpp binaries are in the **current directory** (same directory as main.py)
 

@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QIcon
 from src.ui.main_window import MainWindow
 
 
@@ -29,6 +30,11 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Local Meeting Notes Generator")
     app.setApplicationVersion("1.0.0")
+
+    # Set application icon
+    icon_path = Path("icon.ico")
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
 
     # Ensure required directories exist
     ensure_directories_exist()

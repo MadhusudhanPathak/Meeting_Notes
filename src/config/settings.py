@@ -29,11 +29,11 @@ class ConfigManager:
     """Manages application configuration and validation."""
     
     def __init__(self, input_dir: str = "input", output_dir: str = "output"):
-        # Look for main.exe and Whisper.dll in the current directory
+        # Look for Whisper.exe and Whisper.dll in the current directory
         self.app_config = AppConfig(
             input_dir=input_dir,
             output_dir=output_dir,
-            main_exe_path="main.exe",  # Look in current directory
+            main_exe_path="Whisper.exe",  # Look in current directory
             whisper_dll_path="Whisper.dll",  # Look in current directory
             model_path=self._find_model_file(input_dir),
             system_prompt_paths=self._find_system_prompt_files(input_dir)
@@ -72,7 +72,7 @@ class ConfigManager:
         errors = []
 
         if not os.path.exists(self.app_config.main_exe_path):
-            errors.append(f"ERROR: main.exe not found in current directory. Please download Whisper.cpp binaries from https://github.com/Const-me/Whisper and place main.exe in the same directory as main.py")
+            errors.append(f"ERROR: Whisper.exe not found in current directory. Please download Whisper.cpp binaries from https://github.com/Const-me/Whisper and place Whisper.exe in the same directory as main.py")
 
         if not os.path.exists(self.app_config.whisper_dll_path):
             errors.append(f"ERROR: Whisper.dll not found in current directory. Please download Whisper.cpp binaries from https://github.com/Const-me/Whisper and place Whisper.dll in the same directory as main.py")

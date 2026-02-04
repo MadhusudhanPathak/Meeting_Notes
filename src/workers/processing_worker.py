@@ -81,22 +81,23 @@ class ProcessingWorker(QThread):
             self.finished.emit(result)
             
         except FileNotFoundError as e:
-            error_msg = f"File not found: {e}"
+            error_msg = f"File not found: {str(e)}"
             self.log.emit(error_msg)
             self.finished.emit(None)
         except TranscriptionError as e:
-            error_msg = f"Transcription error: {e}"
+            error_msg = f"Transcription error: {str(e)}"
             self.log.emit(error_msg)
             self.finished.emit(None)
         except NoteGenerationError as e:
-            error_msg = f"Note generation error: {e}"
+            error_msg = f"Note generation error: {str(e)}"
             self.log.emit(error_msg)
             self.finished.emit(None)
         except ValueError as e:
-            error_msg = f"Value error: {e}"
+            error_msg = f"Value error: {str(e)}"
             self.log.emit(error_msg)
             self.finished.emit(None)
         except Exception as e:
-            error_msg = f"An unexpected error occurred: {e}"
+            import traceback
+            error_msg = f"An unexpected error occurred: {str(e)}\n{traceback.format_exc()}"
             self.log.emit(error_msg)
             self.finished.emit(None)

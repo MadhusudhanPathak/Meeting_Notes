@@ -20,16 +20,16 @@ class AudioTranscriber:
     def __init__(self, main_exe_path: str, model_path: str):
         """
         Initialize the transcriber with paths to Whisper.cpp executable and model.
-        
+
         Args:
-            main_exe_path: Path to the Whisper.cpp main.exe executable
+            main_exe_path: Path to the Whisper.cpp Whisper.exe executable
             model_path: Path to the Whisper model file (.bin)
-        
+
         Raises:
             FileNotFoundError: If the executable or model file doesn't exist
         """
         if not os.path.exists(main_exe_path):
-            raise FileNotFoundError(f"main.exe not found at {main_exe_path}")
+            raise FileNotFoundError(f"Whisper.exe not found at {main_exe_path}")
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model file not found at {model_path}")
         
@@ -98,11 +98,11 @@ class AudioTranscriber:
 
 if __name__ == '__main__':
     # This is for testing purposes.
-    # You would need to have main.exe, Whisper.dll, and a model file in the input directory.
+    # You would need to have Whisper.exe, Whisper.dll, and a model file in the input directory.
     # And an audio file to test with.
     try:
         transcriber = AudioTranscriber(
-            main_exe_path="input/main.exe",
+            main_exe_path="input/Whisper.exe",
             model_path="input/ggml-base.en.bin"  # Assuming a model file is present
         )
         transcript = transcriber.transcribe("input/test_audio.wav")  # Assuming a test audio file

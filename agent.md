@@ -17,10 +17,12 @@ The application follows a modern, modular architecture with the following key co
 
 ### Input Directory Structure
 The application expects the following files in the `input` directory:
-- `main.exe` - Whisper.cpp executable
 - `Whisper.dll` - Whisper.cpp dependency
 - `.bin` model files (e.g., `ggml-medium.bin`) - Whisper models
 - `*.txt` - System prompt templates for note generation (any .txt file in the input folder)
+
+The application also expects the following file in the current directory:
+- `Whisper.exe` - Whisper.cpp executable
 
 ## Key Features
 - Audio file selection (MP3/WAV/M4A/FLAC/AAC/OGG support)
@@ -63,7 +65,7 @@ The application expects the following files in the `input` directory:
 
 ### Configuration Validation
 The application validates the following on startup:
-- Presence of `main.exe` in the current directory
+- Presence of `Whisper.exe` in the current directory
 - Presence of `Whisper.dll` in the current directory
 - At least one `.bin` model file in the `input/` directory
 - At least one `*.txt` file in the `input/` directory for system prompts
