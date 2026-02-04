@@ -28,14 +28,15 @@ The application also expects the following file in the current directory:
 - Audio file selection (MP3/WAV/M4A/FLAC/AAC/OGG support)
 - Local audio transcription using Whisper.cpp
 - AI-powered meeting note generation using Ollama
-- PDF and TXT output generation
+- Transcription-only mode (does not require Ollama)
+- PDF, MD, and TXT output generation
 - Progress tracking and logging
 - Model and system prompt selection via dropdowns
 - Dependency validation on startup
 - Comprehensive error handling and input validation
 - Professional UI with responsive design
 - Modern UI design with Times New Roman font, teal color scheme (#dcf2ee), and intuitive layout
-- Larger, more prominent "Generate Meeting Notes" button with 64pt font
+- Two-button layout: "Transcribe Audio" (left, 20% width) and "Generate Meeting Notes" (right, 80% width)
 - Improved button hover and selection effects
 - Rearranged controls with file details on left and action buttons on right
 
@@ -121,24 +122,36 @@ Contains the ProcessingWorker class that:
 - Provides progress updates to the UI
 - Implements proper error handling for background tasks
 
+### src/workers/transcription_worker.py
+Contains the TranscriptionOnlyWorker class that:
+- Handles transcription-only processing in a separate thread
+- Works independently of Ollama (requires only Whisper.cpp)
+- Provides progress updates to the UI
+- Implements proper error handling for background tasks
+
 ## Usage Flow
 1. Application starts and validates dependencies
 2. User selects an audio file
-3. User chooses Ollama model and system prompt
-4. User selects Whisper model for transcription
-5. User initiates processing
-6. Application transcribes audio using Whisper.cpp
-7. Application generates notes using Ollama
-8. Application saves transcript (TXT) and notes (PDF) to output directory
+3. User selects Whisper model for transcription
+4. **For transcription only (no Ollama required)**: User clicks "Transcribe Audio" button
+   - Application transcribes audio using Whisper.cpp
+   - Application saves only transcript (TXT) to output directory
+5. **For full meeting notes generation (requires Ollama)**:
+   - User chooses Ollama model and system prompt
+   - User clicks "Generate Meeting Notes" button
+   - Application transcribes audio using Whisper.cpp
+   - Application generates notes using Ollama
+   - Application saves transcript (TXT), notes (MD), and notes (PDF) to output directory
 
 ## Important Notes
 - The application requires Whisper.cpp binaries and models to be placed in the appropriate directories
 - Ollama must be installed and running locally for note generation to work
+- The transcription-only feature works without Ollama (requires only Whisper.cpp)
 - All processing happens locally on the user's machine
 - The application generates both raw transcripts and AI-enhanced meeting notes
 - The codebase follows industry-standard architecture with clear separation of concerns
 - Proper error handling and input validation have been implemented throughout
 - The application has a modern UI with Times New Roman font and teal color scheme
-- The "Generate Meeting Notes" button is prominently displayed with large text
+- The UI has two buttons: "Transcribe Audio" (left, 20% width) and "Generate Meeting Notes" (right, 80% width)
 - The application now supports all .txt files in the input folder as system prompts
 - Improved error messages guide users to download required components from appropriate sources

@@ -20,6 +20,7 @@ My base philosophy for making this is to promote local distilled Small Language 
 
 - **Local Audio Transcription**: Uses Whisper.cpp for privacy-focused, offline audio-to-text conversion
 - **AI-Powered Note Generation**: Leverages Ollama for intelligent meeting summary generation
+- **Transcription-Only Mode**: Simple audio transcription without requiring Ollama (uses only .bin file)
 - **Professional UI**: Modern PyQt5-based desktop interface with progress tracking
 - **Flexible Output**: Generates both detailed transcripts (TXT) and formatted notes (PDF)
 - **Model Selection**: Choose from multiple available Ollama models
@@ -80,17 +81,21 @@ The application will automatically create `input/` and `output/` directories if 
 
 3. Select an audio file (MP3, WAV, M4A, FLAC, AAC, OGG)
 
-4. Choose an Ollama model from the dropdown
+4. Select a Whisper model (.bin file) from the dropdown
 
-5. Select a system prompt template
+5. **For transcription only (no Ollama required)**: Click the "Transcribe Audio" button (left button)
+   - This generates only the transcript file in the output folder
+   - Does not require Ollama to be installed or running
 
-6. Select a Whisper model (.bin file) from the dropdown
+6. **For full meeting notes generation (requires Ollama)**:
+   - Choose an Ollama model from the dropdown
+   - Select a system prompt template
+   - Click "Generate Meeting Notes" (right button)
+   - This generates transcript (TXT), notes (MD), and notes (PDF) in the output folder
 
-7. Click "Generate Meeting Notes"
+7. Monitor progress in the log panel
 
-8. Monitor progress in the log panel
-
-9. The generated transcript (TXT) and notes (PDF) will be automatically saved to the `output/` directory
+8. The generated files will be automatically saved to the `output/` directory
 
 ## Batch File Usage
 
