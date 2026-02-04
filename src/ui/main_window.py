@@ -17,6 +17,7 @@ from PyQt5.QtCore import QThread, Qt
 from src.config.settings import ConfigManager
 from src.core.note_generator import NoteGenerator, NoteGenerationError
 from src.workers.processing_worker import ProcessingWorker
+from src.workers.transcription_worker import TranscriptionOnlyWorker
 from src.utils.helpers import get_timestamped_filename, validate_audio_file
 
 
@@ -35,6 +36,7 @@ class MainWindow(QMainWindow):
         self.selected_audio_file: Optional[str] = None
         self.selected_batch_files: list = []
         self.batch_processing_index: int = 0
+        self.batch_transcription_index: int = 0
         self.worker: Optional[QThread] = None
         
         # Setup UI
@@ -211,12 +213,64 @@ class MainWindow(QMainWindow):
         model_bin_layout.addWidget(self.model_bin_combo)
         controls_layout.addLayout(model_bin_layout)
 
-        # Process button
+        # Process buttons layout
+        process_buttons_layout = QHBoxLayout()
+
+        # Transcribe only button (20% width)
+        self.transcribe_button = QPushButton("Transcribe Audio")
+        self.transcribe_button.setObjectName("generateButton")  # Apply special styling
+        self.transcribe_button.setEnabled(False)
+        self.transcribe_button.clicked.connect(self.transcribe_audio_only)
+        self.transcribe_button.setStyleSheet("""
+            QPushButton {
+                background-color: #9de3d3;
+                border: 2px solid #7fc2b7;
+                border-radius: 12px;
+                padding: 10px;
+                font-weight: bold;
+                min-height: 35px;
+                font-family: 'Times New Roman', serif;
+                font-size: 12pt;
+            }
+            QPushButton:hover {
+                background-color: #b3f2e5;
+            }
+            QPushButton:pressed {
+                background-color: #7bc9ba;
+            }
+            QPushButton:disabled {
+                background-color: #c0e0da;
+                color: #888888;
+            }
+        """)
+        process_buttons_layout.addWidget(self.transcribe_button, 1)  # 1 part (20%)
+
+        # Generate meeting notes button (80% width)
         self.make_notes_button = QPushButton("Generate Meeting Notes")
         self.make_notes_button.setObjectName("generateButton")  # Apply special styling
         self.make_notes_button.setEnabled(False)
         self.make_notes_button.clicked.connect(self.generate_notes)
-        controls_layout.addWidget(self.make_notes_button)
+        self.make_notes_button.setStyleSheet("""
+            QPushButton#generateButton {
+                background-color: #9de3d3;
+                border: 2px solid #6bb5a3;
+                border-radius: 15px;
+                padding: 10px;
+                font-weight: bold;
+                font-size: 16pt;
+                min-height: 40px;
+                font-family: 'Times New Roman', serif;
+            }
+            QPushButton#generateButton:hover {
+                background-color: #b3f2e5;
+            }
+            QPushButton#generateButton:pressed {
+                background-color: #7bc9ba;
+            }
+        """)
+        process_buttons_layout.addWidget(self.make_notes_button, 4)  # 4 parts (80%)
+
+        controls_layout.addLayout(process_buttons_layout)
 
         controls_group.setLayout(controls_layout)
         main_layout.addWidget(controls_group)
@@ -246,39 +300,65 @@ class MainWindow(QMainWindow):
 
         config_errors = self.config_manager.validate()
 
+        # Check Ollama dependencies separately for the note generation feature
+        ollama_errors = []
         try:
             ollama_models = self.note_generator.get_available_models()
             if not ollama_models:
-                config_errors.append("ERROR: No Ollama models found. Please download and set up models using Ollama (e.g., run 'ollama pull llama2' in terminal). Visit https://ollama.ai to download and install Ollama.")
+                ollama_errors.append("WARNING: No Ollama models found. Note generation feature will be disabled. Please download and set up models using Ollama (e.g., run 'ollama pull llama2' in terminal). Visit https://ollama.ai to download and install Ollama.")
         except NoteGenerationError as e:
             ollama_models = []
             # The error message is already detailed in the NoteGenerator
-            config_errors.append(str(e))
+            ollama_errors.append(f"WARNING: {str(e)}. Note generation feature will be disabled.")
 
+        # Check if Whisper dependencies are available for transcription
+        whisper_errors = [error for error in config_errors if "Whisper" in error or ".bin model" in error]
+
+        # Enable transcription button if Whisper dependencies are met
+        if not whisper_errors:
+            self.transcribe_button.setEnabled(True)
+            self.log_text_edit.append("Transcription feature is available.")
+        else:
+            self.transcribe_button.setEnabled(False)
+            self.log_text_edit.append("Transcription feature unavailable due to missing dependencies.")
+
+        # Enable notes generation button only if both Whisper and Ollama are available
+        if not config_errors and ollama_models:
+            self.make_notes_button.setEnabled(True)
+            self.log_text_edit.append("Note generation feature is available.")
+        else:
+            self.make_notes_button.setEnabled(False)
+            self.log_text_edit.append("Note generation feature unavailable due to missing dependencies.")
+
+        # Show errors if there are critical issues (Whisper dependencies missing)
         if config_errors:
             self.log_text_edit.append("Status: Error - Missing Dependencies")
             for error in config_errors:
                 self.log_text_edit.append(f"{error}")
-            self.make_notes_button.setEnabled(False)
 
-            # Show error dialog with detailed information
-            error_msg = "\n".join(config_errors)
-            QMessageBox.critical(
-                self,
-                "Dependency Error",
-                f"The application is missing required dependencies:\n\n{error_msg}\n\n"
-                "Please follow the instructions above to download and set up the required components.\n\n"
-                "Visit https://ollama.ai to download and install Ollama, and keep it running when using this application.\n\n"
-                "Read the README.md file in the project directory for more information."
-            )
+            # Show error dialog only for critical errors (missing Whisper dependencies)
+            critical_errors = [error for error in config_errors if "Whisper" in error or ".bin model" in error]
+            if critical_errors:
+                error_msg = "\n".join(critical_errors)
+                QMessageBox.critical(
+                    self,
+                    "Dependency Error",
+                    f"The application is missing required dependencies:\n\n{error_msg}\n\n"
+                    "Please follow the instructions above to download and set up the required components.\n\n"
+                    "Visit https://ollama.ai to download and install Ollama, and keep it running when using this application.\n\n"
+                    "Read the README.md file in the project directory for more information."
+                )
         else:
             self.log_text_edit.append("Status: Ready")
             self.log_text_edit.append("All dependencies are met.")
             QApplication.processEvents()  # Allow UI to update
 
-            # Populate model combo
+            # Populate model combo for Ollama (if available)
             self.ollama_model_combo.clear()
-            self.ollama_model_combo.addItems(ollama_models)
+            if ollama_models:
+                self.ollama_model_combo.addItems(ollama_models)
+            else:
+                self.ollama_model_combo.addItem("Ollama not available", None)
 
             # Populate system prompt combo
             self.system_prompt_combo.clear()
@@ -296,6 +376,11 @@ class MainWindow(QMainWindow):
                     os.path.basename(model_file),
                     model_file
                 )
+
+        # Report warnings if any
+        if ollama_errors:
+            for warning in ollama_errors:
+                self.log_text_edit.append(warning)
     
     def select_audio_file(self) -> None:
         """Handle audio file selection."""
@@ -357,6 +442,23 @@ class MainWindow(QMainWindow):
             else:
                 self.make_notes_button.setEnabled(False)
     
+    def transcribe_audio_only(self) -> None:
+        """Start the transcription-only process."""
+        # Determine if we're processing a single file or batch
+        if self.selected_audio_file:
+            # Single file processing
+            self.transcribe_single_file()
+        elif self.selected_batch_files:
+            # Batch processing
+            self.transcribe_batch_files()
+        else:
+            QMessageBox.warning(
+                self,
+                "No Audio File",
+                "Please select an audio file or multiple files first."
+            )
+            return
+
     def generate_notes(self) -> None:
         """Start the note generation process."""
         # Determine if we're processing a single file or batch
@@ -373,6 +475,47 @@ class MainWindow(QMainWindow):
                 "Please select an audio file or multiple files first."
             )
             return
+
+    def transcribe_single_file(self) -> None:
+        """Process a single audio file for transcription only."""
+        # Confirm overwrite if files exist
+        base_name = Path(self.selected_audio_file).stem
+        timestamped_base_name = get_timestamped_filename(base_name, "")
+        # Remove the trailing dot from timestamped filename
+        timestamped_base_name = timestamped_base_name[:-1] if timestamped_base_name.endswith('.') else timestamped_base_name
+
+        reply = QMessageBox.question(
+            self,
+            "Confirm Transcription",
+            f"This will transcribe '{os.path.basename(self.selected_audio_file)}' using the selected model.\n\n"
+            f"Continue?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if reply != QMessageBox.Yes:
+            return
+
+        # Disable UI during processing
+        self.transcribe_button.setEnabled(False)
+        self.make_notes_button.setEnabled(False)
+        self.select_audio_button.setEnabled(False)
+        self.ollama_model_combo.setEnabled(False)
+        self.system_prompt_combo.setEnabled(False)
+        self.progress_bar.setValue(0)
+
+        # Get selected values
+        selected_model_path = self.model_bin_combo.currentData()
+
+        # Create and start worker
+        self.worker = TranscriptionOnlyWorker(
+            self.config_manager,
+            self.selected_audio_file,
+            selected_model_path
+        )
+        self.worker.progress.connect(self.update_progress)
+        self.worker.log.connect(self.update_log)
+        self.worker.finished.connect(self.transcription_finished)
+        self.worker.start()
 
     def process_single_file(self) -> None:
         """Process a single audio file."""
@@ -449,6 +592,71 @@ class MainWindow(QMainWindow):
         # Start processing the first file
         self.process_next_batch_file()
 
+    def transcribe_batch_files(self) -> None:
+        """Process multiple audio files in batch for transcription only."""
+        if not self.selected_batch_files:
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "Confirm Batch Transcription",
+            f"This will transcribe {len(self.selected_batch_files)} audio files sequentially "
+            f"using the selected model.\n\n"
+            f"Continue?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if reply != QMessageBox.Yes:
+            return
+
+        # Disable UI during processing
+        self.transcribe_button.setEnabled(False)
+        self.make_notes_button.setEnabled(False)
+        self.select_audio_button.setEnabled(False)
+        self.ollama_model_combo.setEnabled(False)
+        self.system_prompt_combo.setEnabled(False)
+        self.progress_bar.setValue(0)
+
+        # Reset batch processing index
+        self.batch_transcription_index = 0
+
+        # Start processing the first file
+        self.process_next_batch_transcription_file()
+
+    def process_next_batch_transcription_file(self) -> None:
+        """Process the next file in the batch for transcription."""
+        if self.batch_transcription_index >= len(self.selected_batch_files):
+            # All files processed
+            self.log_text_edit.append("Batch transcription completed!")
+            # Re-enable UI
+            self.transcribe_button.setEnabled(True)
+            self.make_notes_button.setEnabled(True)
+            self.select_audio_button.setEnabled(True)
+            self.ollama_model_combo.setEnabled(True)
+            self.system_prompt_combo.setEnabled(True)
+            return
+
+        # Get current file to process
+        current_file = self.selected_batch_files[self.batch_transcription_index]
+
+        # Update log with progress
+        self.log_text_edit.append(f"Transcribing file {self.batch_transcription_index + 1}/{len(self.selected_batch_files)}: {os.path.basename(current_file)}")
+
+        # Get selected values
+        selected_model_path = self.model_bin_combo.currentData()
+
+        # Create and start worker for current file
+        self.worker = TranscriptionOnlyWorker(
+            self.config_manager,
+            current_file,
+            selected_model_path
+        )
+        self.worker.progress.connect(self.update_progress)
+        self.worker.log.connect(self.update_log)
+        # Connect to a batch-specific finished handler
+        self.worker.finished.connect(self.batch_transcription_finished)
+        self.worker.start()
+
     def process_next_batch_file(self) -> None:
         """Process the next file in the batch."""
         if self.batch_processing_index >= len(self.selected_batch_files):
@@ -485,6 +693,46 @@ class MainWindow(QMainWindow):
         # Connect to a batch-specific finished handler
         self.worker.finished.connect(self.batch_generation_finished)
         self.worker.start()
+
+    def transcription_finished(self, result: Optional[dict]) -> None:
+        """Handle completion of the transcription-only process."""
+        self.progress_bar.setValue(100)
+
+        # Re-enable UI
+        self.transcribe_button.setEnabled(True)
+        self.make_notes_button.setEnabled(True)
+        self.select_audio_button.setEnabled(True)
+        self.ollama_model_combo.setEnabled(True)
+        self.system_prompt_combo.setEnabled(True)
+
+        if result:
+            # This is only for single file processing, so use self.selected_audio_file
+            self.save_transcript_only(result["transcript"], self.selected_audio_file)
+        else:
+            # Only show error if not part of batch processing
+            if not hasattr(self, 'selected_batch_files') or not self.selected_batch_files or self.batch_transcription_index >= len(self.selected_batch_files):
+                QMessageBox.critical(
+                    self,
+                    "Transcription Failed",
+                    "The transcription process failed. Check the log for details."
+                )
+
+    def batch_transcription_finished(self, result: Optional[dict]) -> None:
+        """Handle completion of a single file in batch transcription."""
+        self.progress_bar.setValue(100)
+
+        if result:
+            # Save transcript for current batch item
+            # The current file being processed is at index self.batch_transcription_index
+            current_file_path = self.selected_batch_files[self.batch_transcription_index]
+            self.save_transcript_only(result["transcript"], current_file_path)
+        else:
+            # Log error but continue with next file
+            self.log_text_edit.append(f"Failed to transcribe file {self.batch_transcription_index + 1}: {os.path.basename(self.selected_batch_files[self.batch_transcription_index])}")
+
+        # Move to next file in batch
+        self.batch_transcription_index += 1
+        self.process_next_batch_transcription_file()
 
     def batch_generation_finished(self, result: Optional[dict]) -> None:
         """Handle completion of a single file in batch processing."""
@@ -533,6 +781,65 @@ class MainWindow(QMainWindow):
                     "The note generation process failed. Check the log for details."
                 )
     
+    def save_transcript_only(self, transcript: str, audio_file_path: str = None) -> None:
+        """Save the transcript to a text file in the output folder."""
+        # Use the provided audio file path as the primary source
+        if audio_file_path:
+            file_path = audio_file_path
+        elif self.selected_audio_file:
+            file_path = self.selected_audio_file
+        else:
+            # If we're in batch mode, use the current batch file
+            if hasattr(self, 'selected_batch_files') and self.selected_batch_files and self.batch_transcription_index > 0:
+                file_path = self.selected_batch_files[self.batch_transcription_index - 1]
+            else:
+                QMessageBox.critical(
+                    self,
+                    "File Error",
+                    "No audio file path provided for saving."
+                )
+                return
+
+        base_name = Path(file_path).stem
+        timestamped_base_name = get_timestamped_filename(base_name, "")
+        # Remove the trailing dot from timestamped filename
+        timestamped_base_name = timestamped_base_name[:-1] if timestamped_base_name.endswith('.') else timestamped_base_name
+
+        # Define output file path in the output directory
+        output_dir = Path("output")
+        txt_file_path = output_dir / f"{timestamped_base_name}_transcript.txt"
+
+        # Ensure output directory exists
+        output_dir = txt_file_path.parent
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save transcript
+        try:
+            with open(txt_file_path, "w", encoding="utf-8") as f:
+                f.write(transcript)
+            self.log_text_edit.append(f"Transcript saved to {txt_file_path}")
+        except Exception as e:
+            self.log_text_edit.append(f"Error saving transcript: {e}")
+            QMessageBox.critical(
+                self,
+                "Save Error",
+                f"Failed to save transcript: {e}"
+            )
+            return
+
+        # Show success message only for single file processing
+        if not hasattr(self, 'selected_batch_files') or not self.selected_batch_files or len(self.selected_batch_files) == 0:
+            self.log_text_edit.append(f"Successfully transcribed: {Path(file_path).name}")
+            QMessageBox.information(
+                self,
+                "Success",
+                f"Audio transcription completed successfully!\n\n"
+                f"File saved to:\n"
+                f"- {txt_file_path} (Transcript)"
+            )
+        else:
+            self.log_text_edit.append(f"Successfully transcribed: {Path(file_path).name}")
+
     def save_files(self, notes: str, transcript: str, audio_file_path: str = None) -> None:
         """Save the generated notes and transcript to three different files in the output folder."""
         # Use the provided audio file path as the primary source
