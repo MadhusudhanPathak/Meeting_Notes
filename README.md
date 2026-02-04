@@ -2,9 +2,12 @@
 
 A professional desktop application for generating structured meeting notes from audio recordings using local processing with Whisper.cpp and Ollama.
 
+## YouTube Introduction & Tutorial
+ https://youtu.be/WZOufhzwrFU
+
 ## Philosophy
 
-My base philosophy for making this is to promote local distilled Small Language Models (SMLs) use and promoting people to not go to Online available Large Language Models (LLMs) for each and every small thing, for instance making meeting notes. This is a great initiative in a lot of way, keeping everything local is good for Privacy, Security as well as for Environment and giving positive signal to AI Market. This program will be work well enough if you have any good performing model installed in a system with 16 GB RAM, Good CPU and Decent GPU. I use this pipeline for around 6 months and I got good enough suggestions to share how I make my meeting notes, then I thought of stitching it all together in this program.
+   My base philosophy for making this is to promote local distilled Small Language Models (SMLs) use and promoting people to not go to Online available Large Language Models (LLMs) for each and every small thing, for instance making meeting notes. This is a great initiative in a lot of way, keeping everything local is good for Privacy, Security as well as for Environment and giving positive signal to AI Market. This program will be work well enough if you have any good performing model installed in a system with 16 GB RAM, Good CPU and Decent GPU. I use this pipeline for around 6 months and I got good enough suggestions to share how I make my meeting notes, then I thought of stitching it all together in this program.
 
 ## Table of Contents
 - [Features](#features)
@@ -22,7 +25,7 @@ My base philosophy for making this is to promote local distilled Small Language 
 - **AI-Powered Note Generation**: Leverages Ollama for intelligent meeting summary generation
 - **Transcription-Only Mode**: Simple audio transcription without requiring Ollama (uses only .bin file)
 - **Professional UI**: Modern PyQt5-based desktop interface with progress tracking
-- **Flexible Output**: Generates both detailed transcripts (TXT) and formatted notes (PDF)
+- **Flexible Output**: Generates detailed transcripts (TXT), original markdown (MD), and formatted notes (PDF)
 - **Model Selection**: Choose from multiple available Ollama models
 - **Prompt Customization**: Use custom system prompts for tailored note generation
 - **Robust Error Handling**: Comprehensive error management and user feedback
