@@ -9,6 +9,8 @@ A professional desktop application for generating structured meeting notes from 
 
    My base philosophy for making this is to promote local distilled Small Language Models (SMLs) use and promoting people to not go to Online available Large Language Models (LLMs) for each and every small thing, for instance making meeting notes. This is a great initiative in a lot of way, keeping everything local is good for Privacy, Security as well as for Environment and giving positive signal to AI Market. This program will be work well enough if you have any good performing model installed in a system with 16 GB RAM, Good CPU and Decent GPU. I use this pipeline for around 6 months and I got good enough suggestions to share how I make my meeting notes, then I thought of stitching it all together in this program.
 
+![Meeting_Notes_Infographics](Meeting_Notes_Infographics.jpg)
+
 ## Table of Contents
 - [Features](#features)
 - [Prerequisites](#prerequisites)
