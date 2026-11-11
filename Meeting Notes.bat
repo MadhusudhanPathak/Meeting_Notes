@@ -1,6 +1,7 @@
 @echo off
 color 0A
 setlocal enabledelayedexpansion
+cd /d "%~dp0"
 
 echo Checking if Python is installed...
 python --version >nul 2>&1
@@ -45,7 +46,7 @@ if %errorlevel% neq 0 (
 )
 
 echo Checking if all required packages are installed...
-python -c "import sys; import pkg_resources; pkg_resources.require(open('requirements.txt', 'r'))" >nul 2>&1
+python -c "import PyQt5, requests, reportlab, urllib3" >nul 2>&1
 if %errorlevel% neq 0 (
     echo Installing required packages from requirements.txt...
     python -m pip install -r requirements.txt
@@ -70,7 +71,6 @@ if %errorlevel% neq 0 (
 echo Finished running main.py
 echo Hope it worked out for you..!!
 
-REM Wait 5 seconds before exit
 echo Closing in 5 seconds...
 timeout /t 5 /nobreak >nul
 endlocal

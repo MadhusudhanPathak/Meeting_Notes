@@ -1,49 +1,51 @@
-# Byte-compiled / optimized / DLL files
+# Runtime data (models, prompts, generated notes)
+input/
+output/
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Ignore contents but not the directories themselves
-input/*
-output/*
+# PyInstaller build output
+build/
+dist/
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# Virtual environments and secrets
+.env
+.env.*
+.venv/
+venv/
+env/
+ENV/
 
-# IDE specific files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.sln
-*.csproj
-*.csproj.user
-
-# Log files
+# Logs and temporary files
 *.log
 logs/
-
-# Temporary files
 *.tmp
 *.temp
 tmp/
 temp/
 
-# Environment variables
-.env
-.venv
-env/
-venv/
-ENV/
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Local configuration files
-config.local
-settings.local
-
-a.mp3
+# OS files
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
