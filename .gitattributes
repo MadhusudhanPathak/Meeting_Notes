@@ -1,0 +1,15 @@
+# Normalise line endings in the repository; check out with the platform default.
+* text=auto
+
+# Windows batch files need CRLF; shell scripts need LF.
+*.bat text eol=crlf
+*.sh text eol=lf
+
+# Binaries
+*.exe binary
+*.dll binary
+*.bin binary
+*.ico binary
+*.jpg binary
+*.png binary
+*.pdf binary

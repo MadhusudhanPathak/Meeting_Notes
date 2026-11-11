@@ -46,7 +46,7 @@ if %errorlevel% neq 0 (
 )
 
 echo Checking if all required packages are installed...
-python -c "import PyQt5, requests, reportlab, urllib3" >nul 2>&1
+python -c "import PyQt5, requests, urllib3" >nul 2>&1
 if %errorlevel% neq 0 (
     echo Installing required packages from requirements.txt...
     python -m pip install -r requirements.txt

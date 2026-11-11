@@ -1,158 +1,223 @@
-"""Rendering of Markdown meeting notes into a styled PDF document."""
+"""Rendering of Markdown meeting notes into a styled PDF document with Qt."""
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+import sys
 from pathlib import Path
-from typing import List
-from xml.sax.saxutils import escape
+from typing import Dict, Iterator, Optional
 
-from reportlab.graphics.shapes import Drawing, Line
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import inch
-from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
+    QGuiApplication,
+    QTextBlock,
+    QTextBlockFormat,
+    QTextCharFormat,
+    QTextCursor,
+    QTextDocument,
+    QTextFrame,
+    QTextFormat,
+    QTextFrameFormat,
+    QTextLength,
+    QTextTable,
+)
+from PyQt5.QtPrintSupport import QPrinter
 
 DOCUMENT_TITLE = "Meeting Notes"
-RULE_WIDTH = 6.5 * inch
+BODY_FONT = {"win32": "Segoe UI", "darwin": "Helvetica Neue"}.get(sys.platform, "DejaVu Sans")
+BODY_POINT_SIZE = 10.5
+TITLE_POINT_SIZE = 22
+SUBTITLE_POINT_SIZE = 10
+TITLE_COLOR = QColor("#00008b")
+SUBTITLE_COLOR = QColor("#666666")
+TABLE_BORDER_COLOR = QColor("#9fb8b3")
+TABLE_HEADER_COLOR = QColor("#e3f4f0")
+HEADING_STYLES: Dict[int, tuple] = {
+    1: (18, QColor("#006400")),
+    2: (15, QColor("#8b0000")),
+    3: (13, QColor("#00008b")),
+}
 
-_BULLET_PREFIXES = ("- ", "* ", "+ ")
-_NUMBERED_ITEM = re.compile(r"^\d+\.")
-_THEMATIC_BREAK = re.compile(r"^([-*_])(?:\s*\1){2,}$")
-_LINK = re.compile(r"\[(.*?)\]\((.*?)\)")
-_EMPHASIS_TOKENS = ("*", "~~", "`")
-_EMPHASIS_RULES = (
-    (re.compile(r"\*\*(.*?)\*\*"), r"<b>\1</b>"),
-    (re.compile(r"\*(.*?)\*|_(.*?)_"), r"<i>\1\2</i>"),
-    (re.compile(r"~~(.*?)~~"), r"<strike>\1</strike>"),
-    (re.compile(r"```(.*?)```"), r'<font face="Courier">\1</font>'),
-    (re.compile(r"`(.*?)`"), r'<font face="Courier">\1</font>'),
-)
+CODE_BACKGROUND_COLOR = QColor("#f3f6f5")
 
-
-@dataclass(frozen=True)
-class _Styles:
-    title: ParagraphStyle
-    heading1: ParagraphStyle
-    heading2: ParagraphStyle
-    heading3: ParagraphStyle
-    bullet: ParagraphStyle
-    body: ParagraphStyle
-
-
-def _build_styles() -> _Styles:
-    base = getSampleStyleSheet()
-    return _Styles(
-        title=ParagraphStyle(
-            "CustomTitle", parent=base["Title"], fontSize=24, spaceBefore=30, spaceAfter=30,
-            alignment=TA_CENTER, textColor=colors.darkblue,
-        ),
-        heading1=ParagraphStyle(
-            "CustomHeading1", parent=base["Heading1"], fontSize=18, spaceBefore=24, spaceAfter=14,
-            textColor=colors.darkgreen,
-        ),
-        heading2=ParagraphStyle(
-            "CustomHeading2", parent=base["Heading2"], fontSize=15, spaceBefore=18, spaceAfter=12,
-            textColor=colors.darkred,
-        ),
-        heading3=ParagraphStyle(
-            "CustomHeading3", parent=base["Heading3"], fontSize=13, spaceBefore=14, spaceAfter=10,
-            textColor=colors.darkblue,
-        ),
-        bullet=ParagraphStyle(
-            "BulletPoints", parent=base["Normal"], leftIndent=30, spaceAfter=6, bulletIndent=15,
-            bulletFontName="Helvetica-Bold", bulletFontSize=10,
-        ),
-        body=base["Normal"],
-    )
+_TASK_ITEM = re.compile(r"^(\s*(?:[-*+]|\d+[.)])\s+)\[([ xX])\]\s+")
+_STAR_BULLET = re.compile(r"^(\s*)[*+](\s+\S)")
+_THEMATIC_BREAK = re.compile(r"^\s*([-*_])(?:\s*\1){2,}\s*$")
+_FENCE = re.compile(r"^\s*(```|~~~)")
+_CODE_SPAN = re.compile(r"(`+)(.+?)\1")
+_LINE_BREAK_TAG = re.compile(r"<br\s*/?>", re.IGNORECASE)
+_UNCHECKED_BOX = "☐ "
+_CHECKED_BOX = "☑ "
+_HARD_LINE_BREAK = "  "
 
 
-def _escape(text: str) -> str:
-    return escape(text, {'"': "&quot;"})
+def build_document(markdown: str, subtitle: Optional[str] = None) -> QTextDocument:
+    """Convert Markdown (GitHub dialect) into a styled document with a title block."""
+    header = f"# {DOCUMENT_TITLE}\n\n" + (f"{_escape_markdown(subtitle)}\n\n" if subtitle else "")
+    document = QTextDocument()
+    body_font = QFont(BODY_FONT)
+    body_font.setPointSizeF(BODY_POINT_SIZE)
+    document.setDefaultFont(body_font)
+    document.setMarkdown(header + _prepare(markdown), QTextDocument.MarkdownDialectGitHub)
+
+    _style_headings(document)
+    _style_code_blocks(document)
+    _style_title(document, has_subtitle=bool(subtitle))
+    _style_tables(document.rootFrame())
+    return document
 
 
-def _paragraph(markup: str, plain_text: str, style: ParagraphStyle) -> Paragraph:
-    """Build a paragraph, falling back to plain text if the generated markup is invalid."""
-    try:
-        return Paragraph(markup, style)
-    except ValueError:
-        return Paragraph(_escape(plain_text), style)
+def render_markdown_pdf(markdown: str, path: Path, subtitle: Optional[str] = None) -> None:
+    """
+    Write ``markdown`` to ``path`` as a paginated PDF with page numbers.
+
+    Raises:
+        RuntimeError: If no Qt application object exists.
+    """
+    if QGuiApplication.instance() is None:
+        raise RuntimeError("A QApplication must exist before rendering PDFs.")
+    document = build_document(markdown, subtitle)
+    printer = QPrinter(QPrinter.HighResolution)
+    printer.setOutputFormat(QPrinter.PdfFormat)
+    printer.setDocName(DOCUMENT_TITLE)
+    printer.setOutputFileName(str(path))
+    document.print_(printer)
 
 
-def _is_list_item(line: str) -> bool:
-    if _THEMATIC_BREAK.match(line):
-        return False
-    return line.startswith(_BULLET_PREFIXES) or bool(_NUMBERED_ITEM.match(line))
+def _prepare(markdown: str) -> str:
+    """
+    Normalise model output for Qt's Markdown importer.
+
+    Outside code, angle brackets are escaped so text like ``<draft>`` is shown
+    instead of being swallowed as HTML, ``*``/``+`` bullets become ``-`` (Qt only
+    draws a bullet for ``-``), task-list markers become checkbox symbols, and
+    single line breaks are kept (models often put one item per line without a
+    list marker, which Markdown would otherwise merge into one paragraph).
+    """
+    lines = []
+    in_fence = False
+    for line in markdown.splitlines():
+        if _FENCE.match(line):
+            in_fence = not in_fence
+            lines.append(line)
+            continue
+        if in_fence:
+            lines.append(line)
+            continue
+        if not _THEMATIC_BREAK.match(line):
+            line = _STAR_BULLET.sub(r"\1-\2", line)
+        line = _TASK_ITEM.sub(
+            lambda match: match.group(1)
+            + (_CHECKED_BOX if match.group(2) in "xX" else _UNCHECKED_BOX),
+            line,
+        )
+        line = _escape_outside_code(_LINE_BREAK_TAG.sub(" ", line))
+        if line.strip() and not line.lstrip().startswith("|"):
+            line = line.rstrip() + _HARD_LINE_BREAK
+        lines.append(line)
+    return "\n".join(lines)
 
 
-def _list_item(line: str, style: ParagraphStyle) -> Paragraph:
-    if line.startswith(_BULLET_PREFIXES):
-        return _paragraph("&bull; " + _escape(line[2:]), line, style)
-    return _paragraph(_escape(line), line, style)
+def _escape_outside_code(line: str) -> str:
+    parts = []
+    position = 0
+    for match in _CODE_SPAN.finditer(line):
+        parts.append(_escape_angles(line[position:match.start()]))
+        parts.append(match.group(0))
+        position = match.end()
+    parts.append(_escape_angles(line[position:]))
+    return "".join(parts)
 
 
-def _inline_markup(line: str) -> str:
-    """Convert inline Markdown (emphasis, code, or links) into reportlab markup."""
-    markup = _escape(line)
-    if any(token in line for token in _EMPHASIS_TOKENS):
-        for pattern, replacement in _EMPHASIS_RULES:
-            markup = pattern.sub(replacement, markup)
-        return markup
-    if "](" in line:
-        return _LINK.sub(r'<link href="\2">\1</link>', markup)
-    return markup
+def _escape_angles(text: str) -> str:
+    return text.replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _horizontal_rule() -> Drawing:
-    line = Line(0, 0, RULE_WIDTH, 0)
-    line.strokeColor = colors.grey
-    line.strokeWidth = 1
-    drawing = Drawing(RULE_WIDTH, 1)
-    drawing.add(line)
-    return drawing
+def _escape_markdown(text: str) -> str:
+    return re.sub(r"([\\`*_{}\[\]()#+\-.!|<>])", r"\\\1", text)
 
 
-def _block(line: str, styles: _Styles) -> List[Flowable]:
-    if line.startswith("#"):
-        level = len(line) - len(line.lstrip("#"))
-        style = {1: styles.heading1, 2: styles.heading2}.get(level, styles.heading3)
-        text = line.lstrip("# ").strip()
-        return [_paragraph(_escape(text), text, style)]
-    if _THEMATIC_BREAK.match(line):
-        return [Spacer(1, 0.2 * inch), _horizontal_rule(), Spacer(1, 0.2 * inch)]
-    return [_paragraph(_inline_markup(line), line, styles.body)]
+def _blocks(document: QTextDocument) -> Iterator[QTextBlock]:
+    block = document.begin()
+    while block.isValid():
+        yield block
+        block = block.next()
 
 
-def build_story(markdown: str) -> List[Flowable]:
-    """Convert Markdown text into the list of flowables that make up the PDF."""
-    styles = _build_styles()
-    story: List[Flowable] = [Paragraph(DOCUMENT_TITLE, styles.title), Spacer(1, 0.25 * inch)]
-    lines = [line.strip() for line in markdown.split("\n")]
-
-    index = 0
-    while index < len(lines):
-        line = lines[index]
-        if not line:
-            story.append(Spacer(1, 0.15 * inch))
-            index += 1
-        elif _is_list_item(line):
-            while index < len(lines) and _is_list_item(lines[index]):
-                story.append(_list_item(lines[index], styles.bullet))
-                index += 1
-            story.append(Spacer(1, 0.1 * inch))
-        else:
-            story.extend(_block(line, styles))
-            story.append(Spacer(1, 0.1 * inch))
-            index += 1
-    return story
+def _style_headings(document: QTextDocument) -> None:
+    for block in _blocks(document):
+        level = block.blockFormat().headingLevel()
+        if not level:
+            continue
+        size, color = HEADING_STYLES.get(level, HEADING_STYLES[3])
+        _format_block(block, size, color, True, top_margin=size * 0.9, bottom_margin=size * 0.4)
 
 
-def render_markdown_pdf(markdown: str, path: Path) -> None:
-    """Write ``markdown`` to ``path`` as a letter-size PDF."""
-    document = SimpleDocTemplate(
-        str(path), pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18
-    )
-    document.build(build_story(markdown))
+def _style_code_blocks(document: QTextDocument) -> None:
+    for block in _blocks(document):
+        if block.blockFormat().hasProperty(QTextFormat.BlockCodeFence):
+            block_format = QTextBlockFormat()
+            block_format.setBackground(QBrush(CODE_BACKGROUND_COLOR))
+            QTextCursor(block).mergeBlockFormat(block_format)
+
+
+def _style_title(document: QTextDocument, has_subtitle: bool) -> None:
+    title = document.begin()
+    _format_block(title, TITLE_POINT_SIZE, TITLE_COLOR, True, top_margin=0, bottom_margin=4)
+    _center(title)
+    if has_subtitle:
+        subtitle = title.next()
+        _format_block(
+            subtitle, SUBTITLE_POINT_SIZE, SUBTITLE_COLOR, False, top_margin=0, bottom_margin=14
+        )
+        _center(subtitle)
+
+
+def _format_block(
+    block: QTextBlock,
+    point_size: float,
+    color: QColor,
+    bold: bool,
+    top_margin: float,
+    bottom_margin: float,
+) -> None:
+    cursor = QTextCursor(block)
+    cursor.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
+    char_format = QTextCharFormat()
+    char_format.setFontPointSize(point_size)
+    char_format.setForeground(QBrush(color))
+    char_format.setFontWeight(QFont.Bold if bold else QFont.Normal)
+    cursor.mergeCharFormat(char_format)
+
+    block_format = QTextBlockFormat()
+    block_format.setTopMargin(top_margin)
+    block_format.setBottomMargin(bottom_margin)
+    cursor.mergeBlockFormat(block_format)
+
+
+def _center(block: QTextBlock) -> None:
+    block_format = QTextBlockFormat()
+    block_format.setAlignment(Qt.AlignHCenter)
+    QTextCursor(block).mergeBlockFormat(block_format)
+
+
+def _style_tables(frame: QTextFrame) -> None:
+    for child in frame.childFrames():
+        if isinstance(child, QTextTable):
+            table_format = child.format()
+            table_format.setBorder(0.6)
+            table_format.setBorderBrush(QBrush(TABLE_BORDER_COLOR))
+            table_format.setBorderStyle(QTextFrameFormat.BorderStyle_Solid)
+            table_format.setCellPadding(5)
+            table_format.setCellSpacing(0)
+            table_format.setWidth(QTextLength(QTextLength.PercentageLength, 100))
+            child.setFormat(table_format)
+            for column in range(child.columns()):
+                cell = child.cellAt(0, column)
+                cell_format = cell.format()
+                cell_format.setBackground(QBrush(TABLE_HEADER_COLOR))
+                cell.setFormat(cell_format)
+        _style_tables(child)

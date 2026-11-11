@@ -163,3 +163,13 @@ GENERATE_BUTTON = """
         background-color: #7bc9ba;
     }
 """
+
+STATUS_LABEL = "font-weight: normal; color: #004d4d; font-size: 11pt;"
+
+DIALOG = WINDOW + """
+    QDialog {
+        background-color: #dcf2ee;
+        font-family: 'Times New Roman', serif;
+        font-size: 12pt;
+    }
+"""

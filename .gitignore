@@ -49,3 +49,6 @@ temp/
 Thumbs.db
 ehthumbs.db
 desktop.ini
+
+# Packaging folder: its files are published as GitHub release assets, not committed
+Releases/
